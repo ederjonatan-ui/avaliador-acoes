@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Avaliador de Ações e Criptomoedas</title>
 
-<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
 
 <style>
     body {
@@ -229,8 +229,32 @@ async function avaliar() {
     else if (ultimoPreco < mm20 && mm20 < mm50) recomendacao = "VENDA";
     else recomendacao = "MANTER";
 
-    document.getElementById("resultado").innerHTML = `<b>${recomendacao}</b>`;
+    // PREÇO IDEAL
+    let precoIdeal = mm20.toFixed(2);
+    let textoRecomendacao = "";
 
+    if (recomendacao === "COMPRA") {
+        textoRecomendacao =
+            `<b>COMPRA</b> — Preço ideal: <span style="color:#00ff88">R$ ${precoIdeal}</span>`;
+    }
+    else if (recomendacao === "VENDA") {
+        textoRecomendacao =
+            `<b>VENDA</b> — Preço ideal: <span style="color:#ff4444">R$ ${precoIdeal}</span>`;
+    }
+    else {
+        textoRecomendacao =
+            `<b>MANTER</b> — Preço ideal: ---`;
+    }
+
+    document.getElementById("resultado").innerHTML = textoRecomendacao;
+
+    // TEMPO INTELIGENTE
+    let tempoRecomendado = 30;
+    if (recomendacao === "COMPRA") tempoRecomendado = 45;
+    if (recomendacao === "VENDA") tempoRecomendado = 20;
+    if (recomendacao === "MANTER") tempoRecomendado = 30;
+
+    // GRÁFICO
     const trace = {
         x: timestamps.map(t => new Date(t * 1000)),
         open: candles.open,
@@ -249,7 +273,7 @@ async function avaliar() {
         font: { color: "white" }
     });
 
-    iniciarContagem(30);
+    iniciarContagem(tempoRecomendado);
 }
 
 function iniciarContagem(seg) {
