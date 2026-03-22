@@ -1,37 +1,60 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Stock Evaluator</title>
-    <style>
-        body { font-family: Arial, sans-serif; }
-        .stock-list { margin: 20px 0; }
-        .stock-item { cursor: pointer; padding: 10px; border: 1px solid #ccc; margin: 5px 0; }
-        .filter { margin-bottom: 10px; }
-    </style>
+    <title>Avaliador de Ações</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Stock Evaluator</h1>
-    <div class="filter">
-        <button id="period-hr">Horário</button>
-        <button id="period-daily">Diário</button>
-        <button id="period-weekly">Semanal</button>
-        <button id="period-annually">Anual</button>
-    </div>
-    <div class="stock-list" id="stockList">
-        <div class="stock-item" data-ticker="AAPL">Apple Inc. (AAPL)</div>
-        <div class="stock-item" data-ticker="MSFT">Microsoft Corp (MSFT)</div>
-        <div class="stock-item" data-ticker="GOOGL">Alphabet Inc. (GOOGL)</div>
-        <div class="stock-item" data-ticker="AMZN">Amazon.com Inc. (AMZN)</div>
-    </div>
-    <input type="text" id="tickerField" placeholder="Enter stock ticker" />
+    <h1>Avaliador de Ações</h1>
+    <div id="chart"></div>
 
     <script>
-        document.querySelectorAll('.stock-item').forEach(item => {
-            item.addEventListener('click', function() {
-                document.getElementById('tickerField').value = this.getAttribute('data-ticker');
-            });
+        // Plotly chart code here
+        var data = [
+            {
+                x: [/* Data for x-axis */],
+                close: [/* Data for closing prices */],
+                high: [/* Data for high prices */],
+                low: [/* Data for low prices */],
+                open: [/* Data for opening prices */],
+                type: 'candlestick'
+            }
+        ];
+        Plotly.newPlot('chart', data);
+    </script>
+
+    <div class="moving-averages">
+        <h2>Moving Averages Analysis</h2>
+        <p>/* Code for moving averages */</p>
+    </div>
+
+    <div class="recommendation-system">
+        <h2>Recommendation System</h2>
+        <p>/* Code for recommendations */</p>
+    </div>
+
+    <div class="simulated-gains">
+        <h2>Simulated Gains</h2>
+        <p>/* Code for simulated gains */</p>
+    </div>
+
+    <div class="news-section">
+        <h2>News Section</h2>
+        <p>/* Code for news articles */</p>
+    </div>
+
+    <div class="countdown-timer">
+        <h2>Countdown Timer</h2>
+        <p id="timer">/* Timer Code */</p>
+    </div>
+
+    <button id="execute-order">Execute Order</button>
+    <script>
+        // Dark mode toggle script
+        const toggle = document.getElementById('dark-mode-toggle');
+        toggle.addEventListener('click', () => {
+            document.body.classList.toggle('dark-mode');
         });
     </script>
 </body>
