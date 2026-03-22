@@ -1,56 +1,54 @@
 const WORKER_URL = "https://throbbing-violet-ec59.ederjonatan.workers.dev";
 
-// ======================================================
-// 1) RESOLVER TICKER AUTOMATICAMENTE
-// ======================================================
-async function resolverTicker(entrada) {
-    const termo = entrada.trim().toUpperCase();
+const inputAtivo = document.getElementById("ativo");
+const lista = document.getElementById("autocomplete-list");
 
-    if (termo.endsWith(".SA")) return termo;
+// ======================================================
+// AUTOCOMPLETE AUTOMÁTICO
+// ======================================================
+inputAtivo.addEventListener("input", async () => {
+    const texto = inputAtivo.value.trim();
 
-    if (/^[A-Z]{4}[0-9]$/.test(termo)) {
-        return termo + ".SA";
+    if (texto.length < 2) {
+        lista.innerHTML = "";
+        return;
     }
 
-    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(termo)}`;
+    const r = await fetch(WORKER_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "searchTicker", query: texto })
+    });
 
-    try {
-        const r = await fetch(url);
-        const json = await r.json();
+    const tickers = await r.json();
 
-        if (!json.quotes || json.quotes.length === 0) {
-            return null;
-        }
+    lista.innerHTML = "";
 
-        const br = json.quotes.filter(q => q.symbol.endsWith(".SA"));
-
-        if (br.length > 0) {
-            return br[0].symbol;
-        }
-
-        return json.quotes[0].symbol;
-
-    } catch (e) {
-        return null;
-    }
-}
+    tickers.slice(0, 10).forEach(t => {
+        const item = document.createElement("div");
+        item.textContent = t;
+        item.onclick = () => {
+            inputAtivo.value = t;
+            lista.innerHTML = "";
+        };
+        lista.appendChild(item);
+    });
+});
 
 // ======================================================
-// 2) FUNÇÃO PRINCIPAL
+// FUNÇÃO PRINCIPAL (AVALIAR)
 // ======================================================
 async function avaliar() {
-    const entrada = document.getElementById("ativo").value.trim();
+    const ativo = inputAtivo.value.trim();
     const intervalo = document.getElementById("intervalo").value;
     const resultadoDiv = document.getElementById("resultado");
 
-    resultadoDiv.innerHTML = "<p>Carregando dados...</p>";
-
-    const ativo = await resolverTicker(entrada);
-
     if (!ativo) {
-        resultadoDiv.innerHTML = "<p style='color:red'>Ativo não encontrado.</p>";
+        resultadoDiv.innerHTML = "<p style='color:red'>Escolha um ativo válido.</p>";
         return;
     }
+
+    resultadoDiv.innerHTML = "<p>Carregando dados...</p>";
 
     try {
         const respostaYahoo = await fetch(WORKER_URL, {
@@ -66,7 +64,7 @@ async function avaliar() {
         const dadosYahoo = await respostaYahoo.json();
 
         if (dadosYahoo.error) {
-            resultadoDiv.innerHTML = `<p style='color:red'>Erro ao buscar dados: ${dadosYahoo.error}</p>`;
+            resultadoDiv.innerHTML = `<p style='color:red'>Erro: ${dadosYahoo.error}</p>`;
             return;
         }
 
@@ -79,9 +77,6 @@ async function avaliar() {
         const closes = chart.indicators.quote[0].close;
         const precoAtual = closes[closes.length - 1];
 
-        // ===============================
-        // 2) CÁLCULOS TÉCNICOS
-        // ===============================
         const mm20 = media(closes, 20);
         const mm50 = media(closes, 50);
         const volatilidade = desvioPadrao(closes);
@@ -95,9 +90,6 @@ async function avaliar() {
 
         const probLocal = calcularProbabilidade(mm20, mm50, rsi, macd);
 
-        // ===============================
-        // 3) ANÁLISE VIA IA
-        // ===============================
         const prompt = `
 Analise o ativo ${ativo}.
 Preço atual: ${precoAtual.toFixed(2)}.
@@ -118,18 +110,12 @@ Probabilidade local: ${(probLocal * 100).toFixed(0)}%.
         const dadosIA = await respostaIA.json();
         const textoIA = extrairTextoIA(dadosIA);
 
-        // ===============================
-        // 4) RECOMENDAÇÃO FINAL
-        // ===============================
         const recomendacao = probLocal > 0.65 ? "COMPRA" :
                              probLocal < 0.45 ? "VENDA" : "NEUTRO";
 
         const risco = volatilidade > 2 ? "Alto" :
                       volatilidade > 1 ? "Médio" : "Baixo";
 
-        // ===============================
-        // 5) MONTAR O LAYOUT
-        // ===============================
         resultadoDiv.innerHTML = `
 <div class="card">
 <h3>Análise Local</h3>
@@ -177,7 +163,7 @@ Recomendação: ${recomendacao}
 }
 
 // ======================================================
-// 3) FUNÇÕES AUXILIARES
+// FUNÇÕES AUXILIARES
 // ======================================================
 function media(arr, n) {
     if (arr.length < n) return arr[arr.length - 1];
