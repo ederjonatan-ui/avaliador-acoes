@@ -33,6 +33,7 @@
         border-radius: 12px;
         max-width: 600px;
         margin: auto;
+        position: relative;
     }
 
     input {
@@ -42,6 +43,27 @@
         border: none;
         margin-bottom: 8px;
         font-size: 14px;
+    }
+
+    .sugestoes {
+        background: #1a1f2e;
+        border: 1px solid #2a3145;
+        border-radius: 8px;
+        max-height: 180px;
+        overflow-y: auto;
+        display: none;
+        position: absolute;
+        width: calc(100% - 40px);
+        z-index: 10;
+    }
+
+    .sugestao-item {
+        padding: 10px;
+        cursor: pointer;
+    }
+
+    .sugestao-item:hover {
+        background: #2a3145;
     }
 
     button {
@@ -71,16 +93,6 @@
         color: #ffcc00;
     }
 
-    #listaAcoes {
-        max-height: 150px;
-        overflow-y: auto;
-        background: #0f1320;
-        padding: 10px;
-        border-radius: 8px;
-        border: 1px solid #222a3d;
-        margin-top: 20px;
-    }
-
     .progresso {
         width: 100%;
         height: 10px;
@@ -105,13 +117,6 @@
         from { opacity: 1; }
         to { opacity: 0.3; }
     }
-
-    label {
-        font-size: 12px;
-        color: #c0c6ff;
-        display: block;
-        margin-bottom: 2px;
-    }
 </style>
 </head>
 
@@ -127,6 +132,8 @@
 
     <label for="ticker">Ticker</label>
     <input id="ticker" placeholder="Ex.: PETR4.SA ou BTC-USD">
+
+    <div id="sugestoes" class="sugestoes"></div>
 
     <button class="btnAvaliar" onclick="avaliar()">Avaliar</button>
 
@@ -166,13 +173,56 @@
 
 </div>
 
-<h2 style="margin-top:25px;">Ativos com Melhores Projeções</h2>
-<div id="listaAcoes"></div>
-
 <script>
 let timer = null;
 let recomendacao = null;
-let horarioTransacao = null;
+
+const inputTicker = document.getElementById("ticker");
+const boxSugestoes = document.getElementById("sugestoes");
+
+inputTicker.addEventListener("input", buscarSugestoes);
+
+// AUTOCOMPLETE GLOBAL
+async function buscarSugestoes() {
+    const texto = inputTicker.value.trim();
+
+    if (texto.length < 2) {
+        boxSugestoes.style.display = "none";
+        return;
+    }
+
+    const url = `https://corsproxy.io/?https://query2.finance.yahoo.com/v1/finance/search?q=${texto}`;
+
+    try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+
+        const lista = data.quotes || [];
+
+        boxSugestoes.innerHTML = "";
+
+        lista.slice(0, 12).forEach(item => {
+            const nome = item.shortname || item.longname || item.symbol;
+            const ticker = item.symbol;
+
+            const div = document.createElement("div");
+            div.className = "sugestao-item";
+            div.innerText = `${nome} (${ticker})`;
+
+            div.onclick = () => {
+                inputTicker.value = ticker;
+                boxSugestoes.style.display = "none";
+            };
+
+            boxSugestoes.appendChild(div);
+        });
+
+        boxSugestoes.style.display = lista.length ? "block" : "none";
+
+    } catch (e) {
+        console.log("Erro ao buscar sugestões:", e);
+    }
+}
 
 function getLastWeekRange() {
     const now = Math.floor(Date.now() / 1000);
@@ -181,7 +231,7 @@ function getLastWeekRange() {
 }
 
 async function avaliar() {
-    const ticker = document.getElementById("ticker").value.trim();
+    const ticker = inputTicker.value.trim();
 
     if (!ticker) {
         alert("Digite um ticker antes de avaliar.");
@@ -192,7 +242,6 @@ async function avaliar() {
     const period1 = range.period1;
     const period2 = range.period2;
 
-    // PROXY CORS
     const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${period1}&period2=${period2}&interval=1d`;
 
     const resp = await fetch(url);
@@ -252,7 +301,6 @@ async function avaliar() {
     let tempoRecomendado = 30;
     if (recomendacao === "COMPRA") tempoRecomendado = 45;
     if (recomendacao === "VENDA") tempoRecomendado = 20;
-    if (recomendacao === "MANTER") tempoRecomendado = 30;
 
     // GRÁFICO
     const trace = {
@@ -307,12 +355,10 @@ function iniciarContagem(seg) {
 }
 
 function registrarTransacao() {
-    horarioTransacao = new Date();
     alert("Transação registrada!");
 }
 
 function resetarSistema() {
-    horarioTransacao = null;
     clearInterval(timer);
 
     document.getElementById("contador").innerText = "--";
