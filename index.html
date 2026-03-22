@@ -3,493 +3,140 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Avaliador de Ações e Criptomoedas</title>
+<title>Avaliador de Ações com IA Híbrida</title>
 
 <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.17.0/dist/tf.min.js"></script>
 
 <style>
-    body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: #f4f4f4;
-        color: #000000;
-        padding: 10px;
-    }
-
-    h1 {
-        text-align: center;
-        margin-bottom: 20px;
-    }
-
-    h2 {
-        margin-top: 10px;
-        font-size: 16px;
-        color: #1a237e;
-    }
-
-    .quadro {
-        background: #ffffff;
-        padding: 15px;
-        border-radius: 12px;
-        max-width: 700px;
-        margin: auto;
-        position: relative;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-    }
-
-    label {
-        font-size: 12px;
-        color: #555;
-        display: block;
-        margin-bottom: 2px;
-    }
-
-    input {
-        width: 100%;
-        padding: 10px;
-        border-radius: 8px;
-        border: 1px solid #ccc;
-        margin-bottom: 8px;
-        font-size: 14px;
-    }
-
-    .sugestoes {
-        background: #ffffff;
-        border: 1px solid #ccc;
-        border-radius: 8px;
-        max-height: 180px;
-        overflow-y: auto;
-        display: none;
-        position: absolute;
-        width: calc(100% - 40px);
-        z-index: 10;
-    }
-
-    .sugestao-item {
-        padding: 10px;
-        cursor: pointer;
-        font-size: 13px;
-    }
-
-    .sugestao-item:hover {
-        background: #e3f2fd;
-    }
-
-    button {
-        padding: 10px 12px;
-        border: none;
-        border-radius: 8px;
-        font-size: 14px;
-        font-weight: bold;
-        cursor: pointer;
-        margin-top: 8px;
-    }
-
-    .btnAvaliar { width: 100%; background: #1a73e8; color: white; }
-
-    .btnTransacao { width: 100%; background: #ffb300; color: #000; }
-    .btnReset { width: 100%; background: #e53935; color: white; }
-
-    .card {
-        margin-top: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #ddd;
-    }
-
-    .timer {
-        font-size: 22px;
-        font-weight: bold;
-        color: #f57c00;
-    }
-
-    .progresso {
-        width: 100%;
-        height: 10px;
-        background: #eee;
-        border-radius: 5px;
-        overflow: hidden;
-        margin-top: 10px;
-    }
-
-    .progressoBarra {
-        height: 100%;
-        width: 100%;
-        background: #1a73e8;
-        transition: width 1s linear;
-    }
-
-    .flash {
-        animation: flashAnim 0.5s infinite alternate;
-    }
-
-    @keyframes flashAnim {
-        from { opacity: 1; }
-        to { opacity: 0.3; }
-    }
-
-    .intervalos-container {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin: 8px 0 4px 0;
-    }
-
-    .btnIntervalo {
-        flex: 1;
-        min-width: 80px;
-        background: #e0e0e0;
-        color: #000;
-        text-align: center;
-    }
-
-    .btnIntervalo.ativo {
-        background: #1a73e8;
-        color: #fff;
-    }
+    body { font-family: Arial, sans-serif; background: #f4f4f4; color: #000; padding: 10px; }
+    h1 { text-align: center; }
+    .quadro { background: #fff; padding: 15px; border-radius: 12px; max-width: 800px; margin: auto; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .card { margin-top: 15px; padding-bottom: 10px; border-bottom: 1px solid #ddd; }
+    .btnAvaliar { width: 100%; background: #1a73e8; color: #fff; padding: 12px; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
 </style>
 </head>
-
 <body>
 
-<audio id="alertaSom">
-    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
-</audio>
-
-<h1>Avaliador de Ações e Criptomoedas</h1>
+<h1>Avaliador de Ações com IA Híbrida</h1>
 
 <div class="quadro">
-
     <label for="ticker">Ticker</label>
     <input id="ticker" placeholder="Ex.: PETR4.SA ou BTC-USD">
-    <div id="sugestoes" class="sugestoes"></div>
-
-    <h2>Intervalo do gráfico</h2>
-    <div class="intervalos-container">
-        <button class="btnIntervalo ativo" data-int="1d">Diário</button>
-        <button class="btnIntervalo" data-int="1h">Por hora</button>
-        <button class="btnIntervalo" data-int="15m">15 minutos</button>
-        <button class="btnIntervalo" data-int="1mo">Mensal</button>
-    </div>
-
     <button class="btnAvaliar" onclick="avaliar()">Avaliar</button>
 
     <div id="chart" style="height: 320px; margin-top: 10px;"></div>
 
-    <div class="card">
-        <h2>Recomendação</h2>
-        <div id="resultado">---</div>
-    </div>
-
-    <div class="card">
-        <h2>Método Mais Indicado</h2>
-        <div id="metodo">---</div>
-    </div>
-
-    <div class="card">
-        <h2>Tempo Sugerido de Permanência</h2>
-        <div id="tempoSugestao">---</div>
-    </div>
-
-    <div class="card">
-        <h2>Ganho / Perda</h2>
-        <div id="ganho">---</div>
-    </div>
-
-    <div class="card">
-        <h2>Margem de Acerto</h2>
-        <div id="acuracia">---</div>
-    </div>
-
-    <div class="card">
-        <h2>Tempo Restante</h2>
-        <div id="contador" class="timer">--</div>
-
-        <div class="progresso">
-            <div id="progressoBarra" class="progressoBarra"></div>
-        </div>
-    </div>
-
-    <button class="btnTransacao" onclick="registrarTransacao()">Registrar Transação</button>
-    <button class="btnReset" onclick="resetarSistema()">Redefinir</button>
-
+    <div class="card"><h2>Recomendação Final</h2><div id="resultado">---</div></div>
+    <div class="card"><h2>Margem de Acerto</h2><div id="acuracia">---</div></div>
 </div>
 
 <script>
-let timer = null;
-let recomendacao = null;
-let intervaloAtual = "1d";
+let modeloIA = tf.sequential();
+modeloIA.add(tf.layers.dense({ units: 16, activation: "relu", inputShape: [5] }));
+modeloIA.add(tf.layers.dense({ units: 8, activation: "relu" }));
+modeloIA.add(tf.layers.dense({ units: 1, activation: "sigmoid" }));
+modeloIA.compile({ optimizer: "adam", loss: "binaryCrossentropy" });
 
-const inputTicker = document.getElementById("ticker");
-const boxSugestoes = document.getElementById("sugestoes");
-const botoesIntervalo = document.querySelectorAll(".btnIntervalo");
+// IA local: previsão rápida
+function previsaoLocal(mm20, mm50, rsi, macd, volatilidade) {
+    const input = tf.tensor2d([[mm20, mm50, rsi, macd, volatilidade]]);
+    return modeloIA.predict(input).dataSync()[0];
+}
 
-inputTicker.addEventListener("input", buscarSugestoes);
+// IA externa: DeepSeek
+async function analiseIAExterna(dados) {
+    const resposta = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer sk-678053a007514f719f527ae806ac08ae" // SUA CHAVE
+        },
+        body: JSON.stringify({
+            model: "deepseek-chat",
+            messages: [{
+                role: "user",
+                content: `
+                Dados:
+                Último preço: ${dados.ultimoPreco}
+                MM20: ${dados.mm20}
+                MM50: ${dados.mm50}
+                RSI: ${dados.rsi}
+                MACD: ${dados.macd}
+                Volatilidade: ${dados.volatilidade}
+                Probabilidade IA local: ${dados.probLocal}
+                Taxa de acerto histórica: ${dados.taxaAcerto}%
 
-botoesIntervalo.forEach(btn => {
-    btn.addEventListener("click", () => {
-        botoesIntervalo.forEach(b => b.classList.remove("ativo"));
-        btn.classList.add("ativo");
-        intervaloAtual = btn.getAttribute("data-int");
-        if (inputTicker.value.trim()) {
-            avaliar();
-        }
+                Gere:
+                - COMPRA, VENDA ou MANTER
+                - Preço ideal
+                - Preço alvo
+                - Probabilidade final
+                - Risco
+                - Justificativa
+                `
+            }]
+        })
     });
-});
-
-// AUTOCOMPLETE GLOBAL
-async function buscarSugestoes() {
-    const texto = inputTicker.value.trim();
-
-    if (texto.length < 2) {
-        boxSugestoes.style.display = "none";
-        return;
-    }
-
-    const url = `https://corsproxy.io/?https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(texto)}`;
-
-    try {
-        const resp = await fetch(url);
-        const data = await resp.json();
-
-        const lista = data.quotes || [];
-
-        boxSugestoes.innerHTML = "";
-
-        lista.slice(0, 12).forEach(item => {
-            const nome = item.shortname || item.longname || item.symbol;
-            const ticker = item.symbol;
-
-            const div = document.createElement("div");
-            div.className = "sugestao-item";
-            div.innerText = `${nome} (${ticker})`;
-
-            div.onclick = () => {
-                inputTicker.value = ticker;
-                boxSugestoes.style.display = "none";
-            };
-
-            boxSugestoes.appendChild(div);
-        });
-
-        boxSugestoes.style.display = lista.length ? "block" : "none";
-
-    } catch (e) {
-        console.log("Erro ao buscar sugestões:", e);
-    }
+    const json = await resposta.json();
+    return json.choices[0].message.content;
 }
 
-function getRangeByInterval() {
-    const now = Math.floor(Date.now() / 1000);
-    let inicio;
-
-    if (intervaloAtual === "1d") {
-        inicio = now - 7 * 24 * 60 * 60; // 7 dias
-    } else if (intervaloAtual === "1h") {
-        inicio = now - 7 * 24 * 60 * 60; // 7 dias
-    } else if (intervaloAtual === "15m") {
-        inicio = now - 3 * 24 * 60 * 60; // 3 dias
-    } else if (intervaloAtual === "1mo") {
-        inicio = now - 365 * 24 * 60 * 60; // 1 ano
-    } else {
-        inicio = now - 7 * 24 * 60 * 60;
-    }
-
-    return { period1: inicio, period2: now };
+// Motor de decisão final
+async function motorDeDecisao(dados) {
+    const probLocal = previsaoLocal(dados.mm20, dados.mm50, dados.rsi, dados.macd, dados.volatilidade);
+    dados.probLocal = probLocal;
+    const analiseExterna = await analiseIAExterna(dados);
+    document.getElementById("resultado").innerHTML = analiseExterna;
 }
 
+// Função principal
 async function avaliar() {
-    const ticker = inputTicker.value.trim();
+    const ticker = document.getElementById("ticker").value.trim();
+    if (!ticker) { alert("Digite um ticker."); return; }
 
-    if (!ticker) {
-        alert("Digite um ticker antes de avaliar.");
-        return;
-    }
-
-    const range = getRangeByInterval();
-    const period1 = range.period1;
-    const period2 = range.period2;
-
-    const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${period1}&period2=${period2}&interval=${intervaloAtual}`;
+    const now = Math.floor(Date.now() / 1000);
+    const weekAgo = now - 7*24*60*60;
+    const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${weekAgo}&period2=${now}&interval=1d`;
 
     const resp = await fetch(url);
     const data = await resp.json();
-
-    if (!data.chart || data.chart.error) {
-        alert("Não foi possível obter dados para esse ticker.");
-        return;
-    }
+    if (!data.chart || data.chart.error) { alert("Erro ao obter dados."); return; }
 
     const result = data.chart.result[0];
     const timestamps = result.timestamp;
     const candles = result.indicators.quote[0];
     const closes = candles.close;
 
-    if (!closes || closes.length < 2) {
-        alert("Poucos dados disponíveis.");
-        return;
+    const mm20 = closes.slice(-20).reduce((a,b)=>a+b,0)/Math.min(20,closes.length);
+    const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0)/Math.min(50,closes.length);
+    const ultimoPreco = closes[closes.length-1];
+
+    // margem de acerto simples
+    let acertos=0, erros=0;
+    for (let i=0;i<closes.length-1;i++){
+        const atual=closes[i], prox=closes[i+1];
+        const mm20_i=closes.slice(Math.max(0,i-19),i+1).reduce((a,b)=>a+b,0)/Math.min(20,i+1);
+        const mm50_i=closes.slice(Math.max(0,i-49),i+1).reduce((a,b)=>a+b,0)/Math.min(50,i+1);
+        let rec="MANTER";
+        if(atual>mm20_i && mm20_i>mm50_i) rec="COMPRA";
+        else if(atual<mm20_i && mm20_i<mm50_i) rec="VENDA";
+        if(rec==="COMPRA" && prox>atual) acertos++; else if(rec==="COMPRA") erros++;
+        if(rec==="VENDA" && prox<atual) acertos++; else if(rec==="VENDA") erros++;
     }
+    const taxaAcerto = (acertos+erros)>0 ? (acertos/(acertos+erros)*100).toFixed(2) : "0.00";
+    document.getElementById("acuracia").innerHTML = `<b>${taxaAcerto}%</b> de acerto histórico`;
 
-    const primeiro = closes[0];
-    const ultimo = closes[closes.length - 1];
-    const desempenho = ((ultimo - primeiro) / primeiro) * 100;
+    // gráfico candles + linha
+    const xVals = timestamps.map(t=>new Date(t*1000));
+    const candleTrace = { x:xVals, open:candles.open, close:candles.close, high:candles.high, low:candles.low, type:"candlestick", name:"Candles" };
+    const lineTrace = { x:xVals, y:closes, type:"scatter", mode:"lines", line:{color:"#2962ff",width:2}, name:"Linha" };
+    Plotly.newPlot("chart",[candleTrace,lineTrace],{paper_bgcolor:"#fff",plot_bgcolor:"#fff",font:{color:"#000"},xaxis:{gridcolor:"#ccc"},yaxis:{gridcolor:"#ccc"}});
 
-    document.getElementById("ganho").innerHTML =
-        `<b>${desempenho.toFixed(2)}%</b> no período selecionado`;
-
-    const mm20 = closes.slice(-20).reduce((a,b)=>a+b,0) / Math.min(20, closes.length);
-    const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0) / Math.min(50, closes.length);
-
-    const ultimoPreco = closes[closes.length - 1];
-
-    if (ultimoPreco > mm20 && mm20 > mm50) recomendacao = "COMPRA";
-    else if (ultimoPreco < mm20 && mm20 < mm50) recomendacao = "VENDA";
-    else recomendacao = "MANTER";
-
-    let precoIdeal = mm20.toFixed(2);
-    let textoRecomendacao = "";
-
-    if (recomendacao === "COMPRA") {
-        textoRecomendacao =
-            `<b>COMPRA</b> — Preço ideal: <span style="color:#2e7d32">R$ ${precoIdeal}</span>`;
-    }
-    else if (recomendacao === "VENDA") {
-        textoRecomendacao =
-            `<b>VENDA</b> — Preço ideal: <span style="color:#c62828">R$ ${precoIdeal}</span>`;
-    }
-    else {
-        textoRecomendacao =
-            `<b>MANTER</b> — Preço ideal: ---`;
-    }
-
-    document.getElementById("resultado").innerHTML = textoRecomendacao;
-
-    // Margem de acerto
-    let acertos = 0;
-    let erros = 0;
-
-    for (let i = 0; i < closes.length - 1; i++) {
-        const precoAtual = closes[i];
-        const precoSeguinte = closes[i + 1];
-
-        const mm20_i = closes.slice(Math.max(0, i - 19), i + 1)
-                             .reduce((a,b)=>a+b,0) / Math.min(20, i+1);
-
-        const mm50_i = closes.slice(Math.max(0, i - 49), i + 1)
-                             .reduce((a,b)=>a+b,0) / Math.min(50, i+1);
-
-        let rec = "MANTER";
-
-        if (precoAtual > mm20_i && mm20_i > mm50_i) rec = "COMPRA";
-        else if (precoAtual < mm20_i && mm20_i < mm50_i) rec = "VENDA";
-
-        if (rec === "COMPRA") {
-            if (precoSeguinte > precoAtual) acertos++;
-            else erros++;
-        }
-
-        if (rec === "VENDA") {
-            if (precoSeguinte < precoAtual) acertos++;
-            else erros++;
-        }
-    }
-
-    const total = acertos + erros;
-    let taxaAcerto = total > 0 ? (acertos / total * 100).toFixed(2) : "0.00";
-
-    document.getElementById("acuracia").innerHTML =
-        `<b>${taxaAcerto}%</b> de acerto nas recomendações (histórico recente)`;
-
-    // Tempo inteligente
-    let tempoRecomendado = 30;
-    if (recomendacao === "COMPRA") tempoRecomendado = 45;
-    if (recomendacao === "VENDA") tempoRecomendado = 20;
-
-    // Candles + linha
-    const xVals = timestamps.map(t => new Date(t * 1000));
-
-    const candleTrace = {
-        x: xVals,
-        open: candles.open,
-        close: candles.close,
-        high: candles.high,
-        low: candles.low,
-        type: "candlestick",
-        increasing: { line: { color: "#00c853" }},
-        decreasing: { line: { color: "#d50000" }},
-        name: "Candles"
-    };
-
-    const lineTrace = {
-        x: xVals,
-        y: closes,
-        type: "scatter",
-        mode: "lines",
-        line: {
-            color: "#2962ff",
-            width: 2
-        },
-        name: "Linha"
-    };
-
-    Plotly.newPlot("chart", [candleTrace, lineTrace], {
-        margin: { t: 20 },
-        paper_bgcolor: "#ffffff",
-        plot_bgcolor: "#ffffff",
-        font: { color: "#000000" },
-        xaxis: { gridcolor: "#e0e0e0" },
-        yaxis: { gridcolor: "#e0e0e0" }
-    });
-
-    iniciarContagem(tempoRecomendado);
-}
-
-function iniciarContagem(seg) {
-    clearInterval(timer);
-
-    let t = seg;
-    const barra = document.getElementById("progressoBarra");
-    const contador = document.getElementById("contador");
-    const alertaSom = document.getElementById("alertaSom");
-
-    contador.classList.remove("flash");
-
-    timer = setInterval(() => {
-        contador.innerText = `Melhor momento em ${t}s`;
-        barra.style.width = (t / seg * 100) + "%";
-        t--;
-
-        if (t < 0) {
-            clearInterval(timer);
-
-            let msg = recomendacao === "COMPRA" ? "Momento ideal para COMPRA!" :
-                      recomendacao === "VENDA" ? "Momento ideal para VENDA!" :
-                      "Nenhuma ação recomendada.";
-
-            contador.innerText = msg;
-            contador.classList.add("flash");
-            alertaSom.play();
-            barra.style.width = "0%";
-        }
-    }, 1000);
-}
-
-function registrarTransacao() {
-    alert("Transação registrada!");
-}
-
-function resetarSistema() {
-    clearInterval(timer);
-
-    document.getElementById("contador").innerText = "--";
-    document.getElementById("ganho").innerText = "---";
-    document.getElementById("resultado").innerText = "---";
-    document.getElementById("metodo").innerText = "---";
-    document.getElementById("tempoSugestao").innerText = "---";
-    document.getElementById("acuracia").innerText = "---";
-    document.getElementById("progressoBarra").style.width = "100%";
-    alert("Sistema redefinido");
+    // chamar motor de decisão
+    const dados = { ultimoPreco, mm20, mm50, rsi:50, macd:0, volatilidade:0.1, taxaAcerto };
+    motorDeDecisao(dados);
 }
 </script>
-
 </body>
 </html>
