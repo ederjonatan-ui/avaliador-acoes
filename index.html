@@ -1,49 +1,77 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Avaliador de Ações – IA Híbrida</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avaliador de Ações – IA Híbrida</title>
 
-<link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        .container {
+            max-width: 450px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #0002;
+        }
+
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            font-size: 16px;
+        }
+
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 6px;
+        }
+
+        button:hover {
+            background: #005fcc;
+        }
+
+        #resultado {
+            margin-top: 20px;
+            padding: 15px;
+            background: #fafafa;
+            border-radius: 8px;
+            min-height: 50px;
+            white-space: pre-wrap;
+        }
+    </style>
 </head>
 
 <body>
 
-<header>Avaliador de Ações – IA Híbrida</header>
-
 <div class="container">
+    <h2>Avaliador de Ações – IA Híbrida</h2>
 
-    <input id="ticker" placeholder="Digite o ativo (ex: PETR4, VALE3, AAPL)" autocomplete="off">
+    <!-- CAMPO DO ATIVO -->
+    <input id="ativo" type="text" placeholder="Ex: VALE3">
 
+    <!-- INTERVALO -->
     <select id="intervalo">
-        <option value="1d">Diário</option>
         <option value="1h">1 hora</option>
-        <option value="15m">15 minutos</option>
+        <option value="1d">Diário</option>
+        <option value="1wk">Semanal</option>
     </select>
 
+    <!-- BOTÃO -->
     <button onclick="avaliar()">Avaliar Ativo</button>
 
+    <!-- RESULTADO -->
     <div id="resultado">Resultado aparecerá aqui...</div>
-
-    <div class="cards" id="cardsPainel" style="display:none;">
-        <div class="card"><h3>Recomendação</h3><div id="cardRecomendacao" class="valor"></div></div>
-        <div class="card"><h3>Preço ideal de compra</h3><div id="cardCompra" class="valor verde"></div></div>
-        <div class="card"><h3>Preço ideal de venda</h3><div id="cardVenda" class="valor vermelho"></div></div>
-        <div class="card"><h3>Preço alvo</h3><div id="cardAlvo" class="valor amarelo"></div></div>
-        <div class="card"><h3>Stop sugerido</h3><div id="cardStop" class="valor vermelho"></div></div>
-        <div class="card"><h3>Probabilidade final</h3><div id="cardProb" class="valor"></div></div>
-        <div class="card"><h3>Risco</h3><div id="cardRisco" class="valor"></div></div>
-        <div class="card"><h3>Resumo técnico</h3><div id="cardResumo" style="white-space:pre-line;"></div></div>
-    </div>
-
-    <canvas id="grafico" height="200"></canvas>
-
 </div>
 
-<script src="app.js?v=60000"></script>
-
-</body>
-</html>
+<!-- APP.JS COM VERSIONAMENTO -->
+<script src="app.js?v=60000">
