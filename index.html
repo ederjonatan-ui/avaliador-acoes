@@ -31,7 +31,7 @@
         background: #ffffff;
         padding: 15px;
         border-radius: 12px;
-        max-width: 600px;
+        max-width: 700px;
         margin: auto;
         position: relative;
         box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -76,19 +76,19 @@
     }
 
     button {
-        width: 100%;
-        padding: 12px;
+        padding: 10px 12px;
         border: none;
         border-radius: 8px;
-        font-size: 16px;
+        font-size: 14px;
         font-weight: bold;
         cursor: pointer;
-        margin-top: 10px;
+        margin-top: 8px;
     }
 
-    .btnAvaliar { background: #1a73e8; color: white; }
-    .btnTransacao { background: #ffb300; color: #000; }
-    .btnReset { background: #e53935; color: white; }
+    .btnAvaliar { width: 100%; background: #1a73e8; color: white; }
+
+    .btnTransacao { width: 100%; background: #ffb300; color: #000; }
+    .btnReset { width: 100%; background: #e53935; color: white; }
 
     .card {
         margin-top: 15px;
@@ -126,6 +126,26 @@
         from { opacity: 1; }
         to { opacity: 0.3; }
     }
+
+    .intervalos-container {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 8px 0 4px 0;
+    }
+
+    .btnIntervalo {
+        flex: 1;
+        min-width: 80px;
+        background: #e0e0e0;
+        color: #000;
+        text-align: center;
+    }
+
+    .btnIntervalo.ativo {
+        background: #1a73e8;
+        color: #fff;
+    }
 </style>
 </head>
 
@@ -143,9 +163,17 @@
     <input id="ticker" placeholder="Ex.: PETR4.SA ou BTC-USD">
     <div id="sugestoes" class="sugestoes"></div>
 
+    <h2>Intervalo do gráfico</h2>
+    <div class="intervalos-container">
+        <button class="btnIntervalo ativo" data-int="1d">Diário</button>
+        <button class="btnIntervalo" data-int="1h">Por hora</button>
+        <button class="btnIntervalo" data-int="15m">15 minutos</button>
+        <button class="btnIntervalo" data-int="1mo">Mensal</button>
+    </div>
+
     <button class="btnAvaliar" onclick="avaliar()">Avaliar</button>
 
-    <div id="chart" style="height: 300px; margin-top: 10px;"></div>
+    <div id="chart" style="height: 320px; margin-top: 10px;"></div>
 
     <div class="card">
         <h2>Recomendação</h2>
@@ -189,13 +217,26 @@
 <script>
 let timer = null;
 let recomendacao = null;
+let intervaloAtual = "1d";
 
 const inputTicker = document.getElementById("ticker");
 const boxSugestoes = document.getElementById("sugestoes");
+const botoesIntervalo = document.querySelectorAll(".btnIntervalo");
 
 inputTicker.addEventListener("input", buscarSugestoes);
 
-// AUTOCOMPLETE GLOBAL (Yahoo Finance Search + proxy)
+botoesIntervalo.forEach(btn => {
+    btn.addEventListener("click", () => {
+        botoesIntervalo.forEach(b => b.classList.remove("ativo"));
+        btn.classList.add("ativo");
+        intervaloAtual = btn.getAttribute("data-int");
+        if (inputTicker.value.trim()) {
+            avaliar();
+        }
+    });
+});
+
+// AUTOCOMPLETE GLOBAL
 async function buscarSugestoes() {
     const texto = inputTicker.value.trim();
 
@@ -237,10 +278,23 @@ async function buscarSugestoes() {
     }
 }
 
-function getLastWeekRange() {
+function getRangeByInterval() {
     const now = Math.floor(Date.now() / 1000);
-    const weekAgo = now - (7 * 24 * 60 * 60);
-    return { period1: weekAgo, period2: now };
+    let inicio;
+
+    if (intervaloAtual === "1d") {
+        inicio = now - 7 * 24 * 60 * 60; // 7 dias
+    } else if (intervaloAtual === "1h") {
+        inicio = now - 7 * 24 * 60 * 60; // 7 dias
+    } else if (intervaloAtual === "15m") {
+        inicio = now - 3 * 24 * 60 * 60; // 3 dias
+    } else if (intervaloAtual === "1mo") {
+        inicio = now - 365 * 24 * 60 * 60; // 1 ano
+    } else {
+        inicio = now - 7 * 24 * 60 * 60;
+    }
+
+    return { period1: inicio, period2: now };
 }
 
 async function avaliar() {
@@ -251,11 +305,11 @@ async function avaliar() {
         return;
     }
 
-    const range = getLastWeekRange();
+    const range = getRangeByInterval();
     const period1 = range.period1;
     const period2 = range.period2;
 
-    const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${period1}&period2=${period2}&interval=1d`;
+    const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${period1}&period2=${period2}&interval=${intervaloAtual}`;
 
     const resp = await fetch(url);
     const data = await resp.json();
@@ -275,15 +329,13 @@ async function avaliar() {
         return;
     }
 
-    // Ganho/perda na semana
     const primeiro = closes[0];
     const ultimo = closes[closes.length - 1];
-    const desempenhoSemana = ((ultimo - primeiro) / primeiro) * 100;
+    const desempenho = ((ultimo - primeiro) / primeiro) * 100;
 
     document.getElementById("ganho").innerHTML =
-        `<b>${desempenhoSemana.toFixed(2)}%</b> na última semana`;
+        `<b>${desempenho.toFixed(2)}%</b> no período selecionado`;
 
-    // MM20 e MM50 (no último ponto)
     const mm20 = closes.slice(-20).reduce((a,b)=>a+b,0) / Math.min(20, closes.length);
     const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0) / Math.min(50, closes.length);
 
@@ -293,7 +345,6 @@ async function avaliar() {
     else if (ultimoPreco < mm20 && mm20 < mm50) recomendacao = "VENDA";
     else recomendacao = "MANTER";
 
-    // Preço ideal (MM20)
     let precoIdeal = mm20.toFixed(2);
     let textoRecomendacao = "";
 
@@ -312,7 +363,7 @@ async function avaliar() {
 
     document.getElementById("resultado").innerHTML = textoRecomendacao;
 
-    // Margem de acerto (backtest simples na própria série)
+    // Margem de acerto
     let acertos = 0;
     let erros = 0;
 
@@ -353,19 +404,34 @@ async function avaliar() {
     if (recomendacao === "COMPRA") tempoRecomendado = 45;
     if (recomendacao === "VENDA") tempoRecomendado = 20;
 
-    // Gráfico em linhas + tema claro
-    const trace = {
-        x: timestamps.map(t => new Date(t * 1000)),
+    // Candles + linha
+    const xVals = timestamps.map(t => new Date(t * 1000));
+
+    const candleTrace = {
+        x: xVals,
+        open: candles.open,
+        close: candles.close,
+        high: candles.high,
+        low: candles.low,
+        type: "candlestick",
+        increasing: { line: { color: "#00c853" }},
+        decreasing: { line: { color: "#d50000" }},
+        name: "Candles"
+    };
+
+    const lineTrace = {
+        x: xVals,
         y: closes,
         type: "scatter",
         mode: "lines",
         line: {
-            color: "#1976d2",
-            width: 3
-        }
+            color: "#2962ff",
+            width: 2
+        },
+        name: "Linha"
     };
 
-    Plotly.newPlot("chart", [trace], {
+    Plotly.newPlot("chart", [candleTrace, lineTrace], {
         margin: { t: 20 },
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#ffffff",
