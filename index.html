@@ -200,7 +200,7 @@
         </div>
     </div>
 
-    <button class="btnTransacao" onclick="registrarTransacao()">Registrar Transação</button>
+    <button class="btnTransacao" onclick="registrarTransacao()">Registrar Transacao</button>
     <button class="btnReset" onclick="resetarSistema()">Redefinir</button>
 
 </div>
@@ -227,7 +227,7 @@ botoesIntervalo.forEach(btn => {
     });
 });
 
-// AUTOCOMPLETE GLOBAL (Yahoo Finance Search)
+// AUTOCOMPLETE GLOBAL
 async function buscarSugestoes() {
     const texto = inputTicker.value.trim();
 
@@ -298,8 +298,7 @@ modeloIA.add(tf.layers.dense({ units: 8, activation: "relu" }));
 modeloIA.add(tf.layers.dense({ units: 1, activation: "sigmoid" }));
 modeloIA.compile({ optimizer: "adam", loss: "binaryCrossentropy" });
 
-// Aqui usamos o modelo "cru" (sem treino real) como exemplo.
-// Em produção, você treinaria com um dataset histórico.
+// Stub simples (sem treino real ainda)
 function previsaoLocal(mm20, mm50, rsi, macd, volatilidade) {
     const input = tf.tensor2d([[mm20, mm50, rsi, macd, volatilidade]]);
     const prob = modeloIA.predict(input).dataSync()[0];
@@ -316,7 +315,7 @@ async function analiseIAExterna(dados) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": sk-678053a007514f719f527ae806ac08ae
+                "Authorization": "Bearer SUA_API_KEY_AQUI"
             },
             body: JSON.stringify({
                 model: "deepseek-chat",
@@ -491,4 +490,75 @@ async function avaliar() {
         paper_bgcolor: "#ffffff",
         plot_bgcolor: "#ffffff",
         font: { color: "#000000" },
-        xaxis: { gridcolor
+        xaxis: { gridcolor: "#e0e0e0" },
+        yaxis: { gridcolor: "#e0e0e0" }
+    });
+
+    let tempoRecomendado = 30;
+    if (recomendacaoTecnica === "COMPRA") tempoRecomendado = 45;
+    if (recomendacaoTecnica === "VENDA") tempoRecomendado = 20;
+
+    iniciarContagem(tempoRecomendado);
+
+    const dadosIA = {
+        ultimoPreco,
+        mm20,
+        mm50,
+        rsi: 50,          // placeholders para futura evolução
+        macd: 0,
+        volatilidade: 0.1,
+        taxaAcerto,
+        intervalo: intervaloAtual
+    };
+
+    motorDeDecisao(dadosIA);
+}
+
+function iniciarContagem(seg) {
+    clearInterval(timer);
+
+    let t = seg;
+    const barra = document.getElementById("progressoBarra");
+    const contador = document.getElementById("contador");
+    const alertaSom = document.getElementById("alertaSom");
+
+    contador.classList.remove("flash");
+
+    timer = setInterval(() => {
+        contador.innerText = `Melhor momento em ${t}s`;
+        barra.style.width = (t / seg * 100) + "%";
+        t--;
+
+        if (t < 0) {
+            clearInterval(timer);
+
+            let msg = recomendacaoTecnica === "COMPRA" ? "Momento ideal para COMPRA!" :
+                      recomendacaoTecnica === "VENDA" ? "Momento ideal para VENDA!" :
+                      "Nenhuma ação recomendada.";
+
+            contador.innerText = msg;
+            contador.classList.add("flash");
+            alertaSom.play();
+            barra.style.width = "0%";
+        }
+    }, 1000);
+}
+
+function registrarTransacao() {
+    alert("Transação registrada!");
+}
+
+function resetarSistema() {
+    clearInterval(timer);
+
+    document.getElementById("contador").innerText = "--";
+    document.getElementById("ganho").innerText = "---";
+    document.getElementById("resultado").innerText = "---";
+    document.getElementById("acuracia").innerText = "---";
+    document.getElementById("progressoBarra").style.width = "100%";
+    alert("Sistema redefinido");
+}
+</script>
+
+</body>
+</html>
