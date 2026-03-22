@@ -201,7 +201,7 @@
 
 </div>
 
-    <script>
+<script>
 let timer = null;
 let recomendacaoTecnica = null;
 let intervaloAtual = "1d";
@@ -311,7 +311,7 @@ async function analiseIAExterna(dados) {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": "Bearer sk-b61157a4873d49dd97e186a3ef9f52d3"
+                "Authorization": "Bearer SUA_API_KEY_AQUI"
             },
             body: JSON.stringify({
                 model: "deepseek-chat",
@@ -502,4 +502,23 @@ async function avaliar() {
         mm50,
         rsi: 50,
         macd: 0,
-        volatilidade: 
+        volatilidade: 0.1,
+        taxaAcerto,
+        intervalo: intervaloAtual
+    };
+
+    motorDeDecisao(dadosIA);
+}
+
+function iniciarContagem(seg) {
+    clearInterval(timer);
+
+    let t = seg;
+    const barra = document.getElementById("progressoBarra");
+    const contador = document.getElementById("contador");
+    const alertaSom = document.getElementById("alertaSom");
+
+    contador.classList.remove("flash");
+
+    timer = setInterval(() => {
+        contador.innerText = `Melhor momento em ${t}s`;
