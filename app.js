@@ -99,14 +99,4 @@ async function avaliar() {
         // 3) ANÁLISE VIA IA
         // ===============================
         const prompt = `
-Analise o ativo ${ativo}.
-Preço atual: ${precoAtual.toFixed(2)}.
-MM20: ${mm20.toFixed(2)}.
-MM50: ${mm50.toFixed(2)}.
-RSI: ${rsi.toFixed(2)}.
-MACD: ${macd.toFixed(2)}.
-Volatilidade: ${volatilidade.toFixed(2)}.
-Probabilidade local: ${(probLocal * 100).toFixed(0)}%.
-        `;
-
-        const resposta
+Analise o ativo ${
