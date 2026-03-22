@@ -201,7 +201,7 @@
 
 </div>
 
-<script>
+    <script>
 let timer = null;
 let recomendacaoTecnica = null;
 let intervaloAtual = "1d";
@@ -329,16 +329,16 @@ Dados do ativo:
 - Taxa de acerto histórica da estratégia: ${dados.taxaAcerto}%
 - Intervalo analisado: ${dados.intervalo}
 
-Com base nesses dados, gere uma análise objetiva em formato estruturado:
+Gere uma análise objetiva:
 
-1) Recomendação final: COMPRA, VENDA ou MANTER
-2) Preço ideal de entrada ou saída
-3) Preço alvo (target)
-4) Probabilidade final de acerto (em %)
-5) Nível de risco (Baixo, Médio, Alto)
-6) Justificativa técnica resumida (máx. 3 frases)
+1) Recomendação final (COMPRA, VENDA ou MANTER)
+2) Preço ideal
+3) Preço alvo
+4) Probabilidade final (%)
+5) Risco (Baixo/Médio/Alto)
+6) Justificativa técnica (máx. 3 frases)
 
-Responda em português, em formato de texto simples, pronto para exibição em HTML.
+Responda em português.
                     `
                 }]
             })
@@ -360,14 +360,24 @@ Responda em português, em formato de texto simples, pronto para exibição em H
    ========================= */
 
 async function motorDeDecisao(dados) {
-    const probLocal = previsaoLocal(dados.mm20, dados.mm50, dados.rsi, dados.macd, dados.volatilidade);
+    const probLocal = previsaoLocal(
+        dados.mm20,
+        dados.mm50,
+        dados.rsi,
+        dados.macd,
+        dados.volatilidade
+    );
+
     dados.probLocal = probLocal;
 
     const analiseExterna = await analiseIAExterna(dados);
 
     document.getElementById("resultado").innerHTML = analiseExterna;
 }
+</script>
 
+
+    <script>
 /* =========================
    AVALIAÇÃO PRINCIPAL
    ========================= */
@@ -510,15 +520,57 @@ async function avaliar() {
     motorDeDecisao(dadosIA);
 }
 
+/* =========================
+   CONTAGEM REGRESSIVA
+   ========================= */
+
 function iniciarContagem(seg) {
     clearInterval(timer);
 
     let t = seg;
     const barra = document.getElementById("progressoBarra");
     const contador = document.getElementById("contador");
-    const alertaSom = document.getElementById("alertaSom");
 
     contador.classList.remove("flash");
 
     timer = setInterval(() => {
         contador.innerText = `Melhor momento em ${t}s`;
+        barra.style.width = (t / seg * 100) + "%";
+        t--;
+
+        if (t < 0) {
+            clearInterval(timer);
+
+            let msg = recomendacaoTecnica === "COMPRA" ? "Momento ideal para COMPRA!" :
+                      recomendacaoTecnica === "VENDA" ? "Momento ideal para VENDA!" :
+                      "Nenhuma ação recomendada.";
+
+            contador.innerText = msg;
+            contador.classList.add("flash");
+            barra.style.width = "0%";
+        }
+    }, 1000);
+}
+
+/* =========================
+   RESET DO SISTEMA
+   ========================= */
+
+function registrarTransacao() {
+    alert("Transação registrada!");
+}
+
+function resetarSistema() {
+    clearInterval(timer);
+
+    document.getElementById("contador").innerText = "--";
+    document.getElementById("ganho").innerText = "---";
+    document.getElementById("resultado").innerText = "---";
+    document.getElementById("acuracia").innerText = "---";
+    document.getElementById("progressoBarra").style.width = "100%";
+    alert("Sistema redefinido");
+}
+</script>
+
+</body>
+</html>
