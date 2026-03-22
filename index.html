@@ -117,4 +117,63 @@
 
     <button onclick="avaliar()">Avaliar Ativo</button>
 
-    <div id="resultado">Resultado aparecer
+    <div id="resultado">Resultado aparecerá aqui...</div>
+
+    <!-- Painel de Cards -->
+    <div class="cards" id="cardsPainel" style="display:none;">
+        <div class="card">
+            <h3>Recomendação</h3>
+            <div id="cardRecomendacao" class="valor"></div>
+        </div>
+
+        <div class="card">
+            <h3>Preço ideal de compra</h3>
+            <div id="cardCompra" class="valor verde"></div>
+        </div>
+
+        <div class="card">
+            <h3>Preço ideal de venda</h3>
+            <div id="cardVenda" class="valor vermelho"></div>
+        </div>
+
+        <div class="card">
+            <h3>Preço alvo</h3>
+            <div id="cardAlvo" class="valor amarelo"></div>
+        </div>
+
+        <div class="card">
+            <h3>Stop sugerido</h3>
+            <div id="cardStop" class="valor vermelho"></div>
+        </div>
+
+        <div class="card">
+            <h3>Probabilidade final</h3>
+            <div id="cardProb" class="valor"></div>
+        </div>
+
+        <div class="card">
+            <h3>Risco</h3>
+            <div id="cardRisco" class="valor"></div>
+        </div>
+
+        <div class="card">
+            <h3>Resumo técnico</h3>
+            <div id="cardResumo" style="white-space:pre-line;"></div>
+        </div>
+    </div>
+
+    <canvas id="grafico" height="200"></canvas>
+
+</div>
+
+<script>
+/* ============================
+   AUTOCOMPLETE GLOBAL
+============================ */
+document.getElementById("ticker").addEventListener("input", async function () {
+    const q = this.value.trim();
+    if (q.length < 2) return;
+
+    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${q}`;
+    try {
+        const r = await
