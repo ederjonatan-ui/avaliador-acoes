@@ -6,15 +6,12 @@ const WORKER_URL = "https://throbbing-violet-ec59.ederjonatan.workers.dev";
 async function resolverTicker(entrada) {
     const termo = entrada.trim().toUpperCase();
 
-    // Se já tiver .SA, retorna direto
     if (termo.endsWith(".SA")) return termo;
 
-    // Se for algo como VALE3, PETR4, ITUB4 etc.
     if (/^[A-Z]{4}[0-9]$/.test(termo)) {
         return termo + ".SA";
     }
 
-    // Busca por nome da empresa ou parte do nome
     const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(termo)}`;
 
     try {
@@ -25,14 +22,12 @@ async function resolverTicker(entrada) {
             return null;
         }
 
-        // Filtra apenas ações brasileiras
         const br = json.quotes.filter(q => q.symbol.endsWith(".SA"));
 
         if (br.length > 0) {
             return br[0].symbol;
         }
 
-        // Se não achar .SA, pega o primeiro mesmo assim
         return json.quotes[0].symbol;
 
     } catch (e) {
@@ -50,7 +45,6 @@ async function avaliar() {
 
     resultadoDiv.innerHTML = "<p>Carregando dados...</p>";
 
-    // Resolver ticker
     const ativo = await resolverTicker(entrada);
 
     if (!ativo) {
@@ -59,9 +53,6 @@ async function avaliar() {
     }
 
     try {
-        // ===============================
-        // 1) BUSCAR DADOS DO YAHOO VIA WORKER
-        // ===============================
         const respostaYahoo = await fetch(WORKER_URL, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -108,4 +99,7 @@ async function avaliar() {
         // 3) ANÁLISE VIA IA
         // ===============================
         const prompt = `
-Analise o ativo ${
+Analise o ativo ${ativo}.
+Preço atual: ${precoAtual.toFixed(2)}.
+MM20: ${mm20.toFixed(2)}.
+MM50: ${mm50
