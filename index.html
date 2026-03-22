@@ -1,125 +1,3 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Avaliador de Ações - Mobile</title>
-
-<!-- Plotly para o gráfico -->
-<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-
-<style>
-    body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: #0b0f19;
-        color: white;
-        padding: 10px;
-    }
-
-    h2 {
-        margin-top: 20px;
-        font-size: 18px;
-        color: #9bb0ff;
-    }
-
-    #topo {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 15px;
-    }
-
-    input {
-        flex: 1;
-        padding: 12px;
-        border-radius: 8px;
-        border: none;
-        font-size: 16px;
-    }
-
-    button {
-        padding: 12px;
-        border: none;
-        border-radius: 8px;
-        font-size: 16px;
-        cursor: pointer;
-        font-weight: bold;
-    }
-
-    #btnAvaliar {
-        background: #1a73e8;
-        color: white;
-    }
-
-    #btnExecutar {
-        background: #1a73e8;
-        width: 100%;
-        margin-top: 15px;
-    }
-
-    #btnDark {
-        background: #444;
-        width: 100%;
-        margin-top: 10px;
-    }
-
-    #painel {
-        margin-top: 20px;
-        background: #111522;
-        padding: 15px;
-        border-radius: 12px;
-    }
-
-    .card {
-        margin-bottom: 15px;
-        padding-bottom: 10px;
-        border-bottom: 1px solid #222a3d;
-    }
-
-    .timer {
-        font-size: 22px;
-        color: #ffcc00;
-        font-weight: bold;
-    }
-</style>
-</head>
-
-<body>
-
-<div id="topo">
-    <input id="ticker" placeholder="Ex.: PETR4.SA">
-    <button id="btnAvaliar" onclick="avaliar()">Avaliar</button>
-</div>
-
-<div id="chart" style="height: 300px;"></div>
-
-<div id="painel">
-
-    <div class="card">
-        <h2>Recomendação</h2>
-        <div id="resultado">---</div>
-    </div>
-
-    <div class="card">
-        <h2>Ganho Simulado</h2>
-        <div id="ganho">---</div>
-    </div>
-
-    <div class="card">
-        <h2>Notícias Recentes</h2>
-        <ul id="noticias"></ul>
-    </div>
-
-    <div class="card">
-        <h2>Tempo Restante</h2>
-        <div id="contador" class="timer">--</div>
-    </div>
-
-</div>
-
-<button id="btnExecutar" onclick="executarOrdem()">Executar Ordem</button>
-<button id="btnDark" onclick="toggleDark()">Modo Escuro</button>
-
 <script>
 let timer = null;
 let recomendacao = null;
@@ -132,7 +10,6 @@ async function avaliar() {
     const ticker = document.getElementById("ticker").value.trim();
     if (!ticker) return alert("Digite um ticker");
 
-    // Busca dados reais do Yahoo Finance
     const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=5m&range=1d`;
     const resp = await fetch(url);
     const data = await resp.json();
@@ -141,62 +18,149 @@ async function avaliar() {
     const timestamps = result.timestamp;
     const candles = result.indicators.quote[0];
 
-    // Médias móveis
     const closes = candles.close;
     const mm20 = closes.slice(-20).reduce((a,b)=>a+b,0) / 20;
     const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0) / 50;
     const ultimo = closes[closes.length - 1];
 
+    // ============================
+    // RECOMENDAÇÃO DINÂMICA
+    // ============================
     if (ultimo > mm20 && mm20 > mm50) recomendacao = "COMPRA";
     else if (ultimo < mm20 && mm20 < mm50) recomendacao = "VENDA";
     else recomendacao = "MANTER";
 
-    document.getElementById("resultado").innerHTML =
-        `<b>${recomendacao}</b><br>Acerto: 68% | Erro: 32%`;
+    // ============================
+    // SUGESTÕES DINÂMICAS
+    // ============================
+    let sugestao = "";
 
-    // Simulação de ganho
+    const volatilidade = Math.abs(candles.high.slice(-5).reduce((a,b)=>a+b) -
+                                  candles.low.slice(-5).reduce((a,b)=>a+b)) / 5;
+
+    if (recomendacao === "COMPRA") {
+        if (volatilidade < 0.5) sugestao = "Alta estável — excelente ponto de entrada.";
+        else sugestao = "Alta com volatilidade — entre com cautela.";
+    }
+
+    if (recomendacao === "VENDA") {
+        if (volatilidade > 1) sugestao = "Pressão vendedora forte — venda recomendada.";
+        else sugestao = "Queda moderada — venda segura.";
+    }
+
+    if (recomendacao === "MANTER") {
+        sugestao = "Mercado lateral — aguarde melhor momento.";
+    }
+
+    document.getElementById("resultado").innerHTML =
+        `<b>${recomendacao}</b><br>${sugestao}`;
+
+    // ============================
+    // GANHO SIMULADO
+    // ============================
     const ganho = 100 * (1 + Math.random() * 0.2);
     document.getElementById("ganho").innerHTML =
         `R$100 ➜ <b>R$${ganho.toFixed(2)}</b>`;
 
-    // Notícias (fake por enquanto)
+    // ============================
+    // NOTÍCIAS (placeholder)
+    // ============================
     document.getElementById("noticias").innerHTML = `
-        <li>Ibovespa em queda</li>
-        <li>Petrobras recua com crise</li>
-        <li>Greve dos caminhoneiros</li>
+        <li>Mercado reage a dados econômicos</li>
+        <li>Setor de energia em destaque</li>
+        <li>Investidores aguardam decisão do Copom</li>
     `;
 
-    // Gráfico
+    // ============================
+    // GRÁFICO DINÂMICO
+    // ============================
     const trace = {
         x: timestamps.map(t => new Date(t * 1000)),
         open: candles.open,
         close: candles.close,
         high: candles.high,
         low: candles.low,
-        type: "candlestick"
+        type: "candlestick",
+        increasing: { line: { color: "#00ff88" }},
+        decreasing: { line: { color: "#ff4444" }}
     };
 
-    Plotly.newPlot("chart", [trace], {
+    const mm20line = {
+        x: timestamps.map(t => new Date(t * 1000)),
+        y: closes.map((c,i)=> i>=20 ? closes.slice(i-20,i).reduce((a,b)=>a+b)/20 : null),
+        type: "scatter",
+        mode: "lines",
+        line: { color: "#ffaa00", width: 2 },
+        name: "MM20"
+    };
+
+    const mm50line = {
+        x: timestamps.map(t => new Date(t * 1000)),
+        y: closes.map((c,i)=> i>=50 ? closes.slice(i-50,i).reduce((a,b)=>a+b)/50 : null),
+        type: "scatter",
+        mode: "lines",
+        line: { color: "#0099ff", width: 2 },
+        name: "MM50"
+    };
+
+    Plotly.newPlot("chart", [trace, mm20line, mm50line], {
         margin: { t: 20 },
         paper_bgcolor: "#0b0f19",
         plot_bgcolor: "#0b0f19",
         font: { color: "white" }
     });
 
-    iniciarContagem(30);
+    // ============================
+    // CONTADOR INTELIGENTE
+    // ============================
+    let tempoRecomendado = 30;
+    if (recomendacao === "COMPRA") tempoRecomendado = 45;
+    if (recomendacao === "VENDA") tempoRecomendado = 20;
+
+    iniciarContagem(tempoRecomendado);
 }
 
+// =====================================
+// CONTADOR COMPLETO COM ALERTAS
+// =====================================
 function iniciarContagem(seg) {
     clearInterval(timer);
     let t = seg;
 
+    const barra = document.getElementById("progressoBarra");
+    const alertaSom = document.getElementById("alertaSom");
+    const contador = document.getElementById("contador");
+
+    contador.classList.remove("flash");
+
     timer = setInterval(() => {
-        document.getElementById("contador").innerText = `${t} segundos`;
+        contador.innerText = `Próximo melhor momento em ${t} segundos`;
+
+        const pct = (t / seg) * 100;
+        barra.style.width = pct + "%";
+
         t--;
+
         if (t < 0) {
             clearInterval(timer);
-            document.getElementById("contador").innerText =
-                `Fim! Resultado: ${recomendacao}`;
+
+            let mensagemFinal = "";
+
+            if (recomendacao === "COMPRA") {
+                mensagemFinal = "Momento ideal para COMPRA!";
+                contador.style.color = "#00ff88";
+            } else if (recomendacao === "VENDA") {
+                mensagemFinal = "Momento ideal para VENDA!";
+                contador.style.color = "#ff4444";
+            } else {
+                mensagemFinal = "Nenhuma ação recomendada agora.";
+                contador.style.color = "#ffcc00";
+            }
+
+            contador.innerText = mensagemFinal;
+            alertaSom.play();
+            contador.classList.add("flash");
+            barra.style.width = "0%";
         }
     }, 1000);
 }
@@ -205,6 +169,3 @@ function executarOrdem() {
     alert(`Ordem de ${recomendacao} executada (simulação)`);
 }
 </script>
-
-</body>
-</html>
