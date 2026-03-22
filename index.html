@@ -188,12 +188,13 @@ async function avaliar() {
         return;
     }
 
-    // Sempre usar última semana
     const range = getLastWeekRange();
     const period1 = range.period1;
     const period2 = range.period2;
 
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${period1}&period2=${period2}&interval=1d`;
+    // PROXY CORS
+    const url = `https://corsproxy.io/?https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${period1}&period2=${period2}&interval=1d`;
+
     const resp = await fetch(url);
     const data = await resp.json();
 
@@ -212,7 +213,6 @@ async function avaliar() {
         return;
     }
 
-    // DESEMPENHO DA SEMANA
     const primeiro = closes[0];
     const ultimo = closes[closes.length - 1];
     const desempenhoSemana = ((ultimo - primeiro) / primeiro) * 100;
@@ -220,7 +220,6 @@ async function avaliar() {
     document.getElementById("ganho").innerHTML =
         `<b>${desempenhoSemana.toFixed(2)}%</b> na última semana`;
 
-    // MÉDIAS
     const mm20 = closes.slice(-20).reduce((a,b)=>a+b,0) / 20;
     const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0) / 50;
 
@@ -232,7 +231,6 @@ async function avaliar() {
 
     document.getElementById("resultado").innerHTML = `<b>${recomendacao}</b>`;
 
-    // GRÁFICO
     const trace = {
         x: timestamps.map(t => new Date(t * 1000)),
         open: candles.open,
