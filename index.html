@@ -35,13 +35,22 @@
         margin: auto;
     }
 
-    input {
+    input, select {
         width: 100%;
-        padding: 12px;
+        padding: 10px;
         border-radius: 8px;
         border: none;
-        margin-bottom: 10px;
-        font-size: 16px;
+        margin-bottom: 8px;
+        font-size: 14px;
+    }
+
+    .linha-datas {
+        display: flex;
+        gap: 8px;
+    }
+
+    .linha-datas input {
+        width: 100%;
     }
 
     button {
@@ -105,6 +114,13 @@
         from { opacity: 1; }
         to { opacity: 0.3; }
     }
+
+    label {
+        font-size: 12px;
+        color: #c0c6ff;
+        display: block;
+        margin-bottom: 2px;
+    }
 </style>
 </head>
 
@@ -118,7 +134,20 @@
 
 <div class="quadro">
 
+    <label for="ticker">Ticker</label>
     <input id="ticker" placeholder="Ex.: PETR4.SA ou BTC-USD">
+
+    <div class="linha-datas">
+        <div>
+            <label for="dataInicio">Data inicial</label>
+            <input id="dataInicio" type="date">
+        </div>
+        <div>
+            <label for="dataFim">Data final</label>
+            <input id="dataFim" type="date">
+        </div>
+    </div>
+
     <button class="btnAvaliar" onclick="avaliar()">Avaliar</button>
 
     <div id="chart" style="height: 300px;"></div>
@@ -165,91 +194,75 @@ let timer = null;
 let recomendacao = null;
 let horarioTransacao = null;
 
+function toUnix(dateStr, endOfDay = false) {
+    const d = new Date(dateStr + (endOfDay ? 'T23:59:59' : 'T00:00:00'));
+    return Math.floor(d.getTime() / 1000);
+}
+
+function getLastWeekRange() {
+    const now = Math.floor(Date.now() / 1000);
+    const weekAgo = now - (7 * 24 * 60 * 60);
+    return { period1: weekAgo, period2: now };
+}
+
 async function avaliar() {
     const ticker = document.getElementById("ticker").value.trim();
+    const dataInicio = document.getElementById("dataInicio").value;
+    const dataFim = document.getElementById("dataFim").value;
+
     if (!ticker) return alert("Digite um ticker");
 
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=15m&range=1d`;
+    let period1, period2;
+
+    if (dataInicio && dataFim) {
+        period1 = toUnix(dataInicio, false);
+        period2 = toUnix(dataFim, true);
+    } else {
+        const range = getLastWeekRange();
+        period1 = range.period1;
+        period2 = range.period2;
+    }
+
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${period1}&period2=${period2}&interval=1d`;
     const resp = await fetch(url);
     const data = await resp.json();
+
+    if (!data.chart || data.chart.error) {
+        alert("Não foi possível obter dados para esse ticker/período.");
+        return;
+    }
 
     const result = data.chart.result[0];
     const timestamps = result.timestamp;
     const candles = result.indicators.quote[0];
-
     const closes = candles.close;
-    const mm20 = closes.slice(-20).reduce((a,b)=>a+b,0) / 20;
-    const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0) / 50;
+
+    if (!closes || closes.length < 2) {
+        alert("Poucos dados disponíveis.");
+        return;
+    }
+
+    // DESEMPENHO DA SEMANA
+    const primeiro = closes[0];
     const ultimo = closes[closes.length - 1];
-
-    // ============================
-    // RECOMENDAÇÃO
-    // ============================
-    if (ultimo > mm20 && mm20 > mm50) recomendacao = "COMPRA";
-    else if (ultimo < mm20 && mm20 < mm50) recomendacao = "VENDA";
-    else recomendacao = "MANTER";
-
-    // ============================
-    // DETECTAR SE É CRIPTO
-    // ============================
-    const isCrypto = ticker.includes("-USD");
-
-    // ============================
-    // SUGESTÃO DE MÉTODO
-    // ============================
-    let metodo = "";
-    let tempoSugestao = "";
-    const volatilidade = Math.abs(candles.high.slice(-5).reduce((a,b)=>a+b) -
-                                  candles.low.slice(-5).reduce((a,b)=>a+b)) / 5;
-
-    if (!isCrypto) {
-        // AÇÕES
-        if (recomendacao === "COMPRA") {
-            metodo = volatilidade < 0.6 ? "SWING TRADE" : "DAY TRADE";
-            tempoSugestao = volatilidade < 0.6 ? "2 a 5 dias" : "10 a 20 minutos";
-        } else if (recomendacao === "VENDA") {
-            metodo = volatilidade > 1 ? "DAY TRADE" : "SWING TRADE";
-            tempoSugestao = volatilidade > 1 ? "5 a 15 minutos" : "1 a 3 dias";
-        } else {
-            metodo = "AGUARDAR";
-            tempoSugestao = "Sem operação recomendada";
-        }
-    } else {
-        // CRIPTOMOEDAS
-        if (recomendacao === "COMPRA") {
-            metodo = volatilidade < 2 ? "SWING TRADE" : "DAY TRADE";
-            tempoSugestao = volatilidade < 2 ? "1 a 3 dias" : "5 a 30 minutos";
-        } else if (recomendacao === "VENDA") {
-            metodo = volatilidade > 3 ? "DAY TRADE" : "SWING TRADE";
-            tempoSugestao = volatilidade > 3 ? "5 a 20 minutos" : "1 a 2 dias";
-        } else {
-            metodo = "AGUARDAR";
-            tempoSugestao = "Sem operação recomendada";
-        }
-    }
-
-    document.getElementById("resultado").innerHTML = `<b>${recomendacao}</b>`;
-    document.getElementById("metodo").innerHTML = `<b>${metodo}</b>`;
-    document.getElementById("tempoSugestao").innerHTML = `<b>${tempoSugestao}</b>`;
-
-    // ============================
-    // PROJEÇÃO DE GANHO
-    // ============================
-    let ganho = 0;
-
-    if (horarioTransacao) {
-        const minutos = (new Date() - horarioTransacao) / 60000;
-        ganho = minutos * (Math.random() * (isCrypto ? 2 : 0.8) - 0.3);
-    } else {
-        ganho = Math.random() * (isCrypto ? 4 : 2) - 1;
-    }
+    const desempenhoSemana = ((ultimo - primeiro) / primeiro) * 100;
 
     document.getElementById("ganho").innerHTML =
-        `<b>${ganho.toFixed(2)}%</b> desde a transação`;
+        `<b>${desempenhoSemana.toFixed(2)}%</b> na última semana`;
 
-    // ============================
+    // MÉDIAS
+    const mm20 = closes.slice(-20).reduce((a,b)=>a+b,0) / 20;
+    const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0) / 50;
+
+    const ultimoPreco = closes[closes.length - 1];
+
+    if (ultimoPreco > mm20 && mm20 > mm50) recomendacao = "COMPRA";
+    else if (ultimoPreco < mm20 && mm20 < mm50) recomendacao = "VENDA";
+    else recomendacao = "MANTER";
+
+    document.getElementById("resultado").innerHTML = `<b>${recomendacao}</b>`;
+
     // GRÁFICO
-    // ============================
     const trace = {
         x: timestamps.map(t => new Date(t * 1000)),
         open: candles.open,
@@ -261,59 +274,15 @@ async function avaliar() {
         decreasing: { line: { color: "#ff4444" }}
     };
 
-    const mm20line = {
-        x: timestamps.map(t => new Date(t * 1000)),
-        y: closes.map((c,i)=> i>=20 ? closes.slice(i-20,i).reduce((a,b)=>a+b)/20 : null),
-        type: "scatter",
-        mode: "lines",
-        line: { color: "#ffaa00", width: 2 }
-    };
-
-    const mm50line = {
-        x: timestamps.map(t => new Date(t * 1000)),
-        y: closes.map((c,i)=> i>=50 ? closes.slice(i-50,i).reduce((a,b)=>a+b)/50 : null),
-        type: "scatter",
-        mode: "lines",
-        line: { color: "#0099ff", width: 2 }
-    };
-
-    Plotly.newPlot("chart", [trace, mm20line, mm50line], {
+    Plotly.newPlot("chart", [trace], {
         margin: { t: 20 },
         paper_bgcolor: "#0b0f19",
         plot_bgcolor: "#0b0f19",
         font: { color: "white" }
     });
 
-    // ============================
-    // LISTA DE MELHORES ATIVOS
-    // ============================
-    const ativos = [
-        { nome: "PETR4", proj: (Math.random()*8+2).toFixed(2) },
-        { nome: "VALE3", proj: (Math.random()*8+2).toFixed(2) },
-        { nome: "ITUB4", proj: (Math.random()*8+2).toFixed(2) },
-        { nome: "BBAS3", proj: (Math.random()*8+2).toFixed(2) },
-        { nome: "WEGE3", proj: (Math.random()*8+2).toFixed(2) },
-
-        // CRIPTOS
-        { nome: "BTC-USD", proj: (Math.random()*15+5).toFixed(2) },
-        { nome: "ETH-USD", proj: (Math.random()*12+4).toFixed(2) },
-        { nome: "SOL-USD", proj: (Math.random()*20+8).toFixed(2) },
-        { nome: "ADA-USD", proj: (Math.random()*18+6).toFixed(2) },
-        { nome: "XRP-USD", proj: (Math.random()*10+3).toFixed(2) }
-    ];
-
-    ativos.sort((a,b)=> b.proj - a.proj);
-
-    document.getElementById("listaAcoes").innerHTML =
-        ativos.map(a => `<div style='padding:5px 0;'>${a.nome} ➜ <b>${a.proj}%</b></div>`).join("");
-
-    // ============================
     // CONTADOR
-    // ============================
-    let tempo = recomendacao === "COMPRA" ? 45 :
-                recomendacao === "VENDA" ? 20 : 30;
-
-    iniciarContagem(tempo);
+    iniciarContagem(30);
 }
 
 function iniciarContagem(seg) {
@@ -361,7 +330,6 @@ function resetarSistema() {
     document.getElementById("metodo").innerText = "---";
     document.getElementById("tempoSugestao").innerText = "---";
     document.getElementById("progressoBarra").style.width = "100%";
-
     alert("Sistema redefinido");
 }
 </script>
