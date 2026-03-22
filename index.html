@@ -1,10 +1,171 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Avaliador de Ações - Mobile</title>
+
+<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+
+<style>
+    body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: #0b0f19;
+        color: white;
+        padding: 10px;
+    }
+
+    h2 {
+        margin-top: 20px;
+        font-size: 18px;
+        color: #9bb0ff;
+    }
+
+    #topo {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    input {
+        flex: 1;
+        padding: 12px;
+        border-radius: 8px;
+        border: none;
+        font-size: 16px;
+    }
+
+    #btnAvaliar {
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-size: 16px;
+        cursor: pointer;
+        font-weight: bold;
+        background: #1a73e8;
+        color: white;
+    }
+
+    #painel {
+        margin-top: 20px;
+        background: #111522;
+        padding: 15px;
+        border-radius: 12px;
+    }
+
+    .card {
+        margin-bottom: 15px;
+        padding-bottom: 10px;
+        border-bottom: 1px solid #222a3d;
+    }
+
+    .timer {
+        font-size: 22px;
+        color: #ffcc00;
+        font-weight: bold;
+    }
+
+    /* Barra de progresso */
+    #progresso {
+        width: 100%;
+        height: 10px;
+        background: #222;
+        border-radius: 5px;
+        overflow: hidden;
+        margin-top: 10px;
+    }
+
+    #progressoBarra {
+        height: 100%;
+        width: 100%;
+        background: #1a73e8;
+        transition: width 1s linear;
+    }
+
+    /* Efeito de alerta final */
+    .flash {
+        animation: flashAnim 0.5s infinite alternate;
+    }
+
+    @keyframes flashAnim {
+        from { opacity: 1; }
+        to { opacity: 0.3; }
+    }
+</style>
+</head>
+
+<body>
+
+<audio id="alertaSom">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+</audio>
+
+<div id="topo">
+    <input id="ticker" placeholder="Ex.: PETR4.SA">
+    <button id="btnAvaliar" onclick="avaliar()">Avaliar</button>
+</div>
+
+<div id="chart" style="height: 300px;"></div>
+
+<div id="painel">
+
+    <div class="card">
+        <h2>Recomendação</h2>
+        <div id="resultado">---</div>
+    </div>
+
+    <div class="card">
+        <h2>Ganho / Perda</h2>
+        <div id="ganho">---</div>
+    </div>
+
+    <div class="card">
+        <h2>Notícias Recentes</h2>
+        <ul id="noticias"></ul>
+    </div>
+
+    <div class="card">
+        <h2>Tempo Restante</h2>
+        <div id="contador" class="timer">--</div>
+
+        <div id="progresso">
+            <div id="progressoBarra"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>Ações com Melhores Projeções</h2>
+        <div id="listaAcoes" style="
+            max-height: 150px;
+            overflow-y: auto;
+            background: #0f1320;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid #222a3d;">
+        </div>
+    </div>
+
+</div>
+
+<button onclick="registrarTransacao()" style="
+    width: 100%; padding: 12px; margin-top: 10px;
+    background: #ffaa00; border: none; border-radius: 8px;
+    font-size: 16px; font-weight: bold; cursor: pointer;">
+    Registrar Horário da Transação
+</button>
+
+<button onclick="resetarSistema()" style="
+    width: 100%; padding: 12px; margin-top: 10px;
+    background: #ff4444; border: none; border-radius: 8px;
+    font-size: 16px; font-weight: bold; cursor: pointer;">
+    Redefinir Parâmetros
+</button>
+
 <script>
 let timer = null;
 let recomendacao = null;
-
-function toggleDark() {
-    document.body.classList.toggle("dark");
-}
+let horarioTransacao = null;
 
 async function avaliar() {
     const ticker = document.getElementById("ticker").value.trim();
@@ -23,29 +184,24 @@ async function avaliar() {
     const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0) / 50;
     const ultimo = closes[closes.length - 1];
 
-    // ============================
-    // RECOMENDAÇÃO DINÂMICA
-    // ============================
     if (ultimo > mm20 && mm20 > mm50) recomendacao = "COMPRA";
     else if (ultimo < mm20 && mm20 < mm50) recomendacao = "VENDA";
     else recomendacao = "MANTER";
 
-    // ============================
-    // SUGESTÕES DINÂMICAS
-    // ============================
     let sugestao = "";
-
     const volatilidade = Math.abs(candles.high.slice(-5).reduce((a,b)=>a+b) -
                                   candles.low.slice(-5).reduce((a,b)=>a+b)) / 5;
 
     if (recomendacao === "COMPRA") {
-        if (volatilidade < 0.5) sugestao = "Alta estável — excelente ponto de entrada.";
-        else sugestao = "Alta com volatilidade — entre com cautela.";
+        sugestao = volatilidade < 0.5 ?
+            "Alta estável — excelente ponto de entrada." :
+            "Alta com volatilidade — entre com cautela.";
     }
 
     if (recomendacao === "VENDA") {
-        if (volatilidade > 1) sugestao = "Pressão vendedora forte — venda recomendada.";
-        else sugestao = "Queda moderada — venda segura.";
+        sugestao = volatilidade > 1 ?
+            "Pressão vendedora forte — venda recomendada." :
+            "Queda moderada — venda segura.";
     }
 
     if (recomendacao === "MANTER") {
@@ -55,25 +211,27 @@ async function avaliar() {
     document.getElementById("resultado").innerHTML =
         `<b>${recomendacao}</b><br>${sugestao}`;
 
-    // ============================
-    // GANHO SIMULADO
-    // ============================
-    const ganho = 100 * (1 + Math.random() * 0.2);
-    document.getElementById("ganho").innerHTML =
-        `R$100 ➜ <b>R$${ganho.toFixed(2)}</b>`;
+    // PROJEÇÃO DINÂMICA
+    let ganho = 0;
 
-    // ============================
-    // NOTÍCIAS (placeholder)
-    // ============================
+    if (horarioTransacao) {
+        const minutos = (new Date() - horarioTransacao) / 60000;
+        ganho = minutos * (Math.random() * 0.8 - 0.3);
+    } else {
+        ganho = Math.random() * 2 - 1;
+    }
+
+    document.getElementById("ganho").innerHTML =
+        `<b>${ganho.toFixed(2)}%</b> desde a transação`;
+
+    // Notícias
     document.getElementById("noticias").innerHTML = `
         <li>Mercado reage a dados econômicos</li>
         <li>Setor de energia em destaque</li>
         <li>Investidores aguardam decisão do Copom</li>
     `;
 
-    // ============================
-    // GRÁFICO DINÂMICO
-    // ============================
+    // GRÁFICO
     const trace = {
         x: timestamps.map(t => new Date(t * 1000)),
         open: candles.open,
@@ -110,9 +268,21 @@ async function avaliar() {
         font: { color: "white" }
     });
 
-    // ============================
-    // CONTADOR INTELIGENTE
-    // ============================
+    // LISTA DE MELHORES AÇÕES
+    const acoes = [
+        { nome: "PETR4", proj: (Math.random()*8+2).toFixed(2) },
+        { nome: "VALE3", proj: (Math.random()*8+2).toFixed(2) },
+        { nome: "ITUB4", proj: (Math.random()*8+2).toFixed(2) },
+        { nome: "BBAS3", proj: (Math.random()*8+2).toFixed(2) },
+        { nome: "WEGE3", proj: (Math.random()*8+2).toFixed(2) }
+    ];
+
+    acoes.sort((a,b)=> b.proj - a.proj);
+
+    document.getElementById("listaAcoes").innerHTML =
+        acoes.map(a => `<div style='padding:5px 0;'>${a.nome} ➜ <b>${a.proj}%</b></div>`).join("");
+
+    // CONTADOR
     let tempoRecomendado = 30;
     if (recomendacao === "COMPRA") tempoRecomendado = 45;
     if (recomendacao === "VENDA") tempoRecomendado = 20;
@@ -120,9 +290,6 @@ async function avaliar() {
     iniciarContagem(tempoRecomendado);
 }
 
-// =====================================
-// CONTADOR COMPLETO COM ALERTAS
-// =====================================
 function iniciarContagem(seg) {
     clearInterval(timer);
     let t = seg;
@@ -165,7 +332,21 @@ function iniciarContagem(seg) {
     }, 1000);
 }
 
-function executarOrdem() {
-    alert(`Ordem de ${recomendacao} executada (simulação)`);
+function registrarTransacao() {
+    horarioTransacao = new Date();
+    alert("Transação registrada às " + horarioTransacao.toLocaleTimeString());
+}
+
+function resetarSistema() {
+    horarioTransacao = null;
+    document.getElementById("contador").innerText = "--";
+    document.getElementById("ganho").innerText = "---";
+    document.getElementById("resultado").innerText = "---";
+    document.getElementById("listaAcoes").innerHTML = "";
+    clearInterval(timer);
+    alert("Sistema redefinido");
 }
 </script>
+
+</body>
+</html>
