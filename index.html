@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Avaliador de Ações – IA Híbrida</title>
 
+    <!-- Chart.js para o gráfico -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+
     <!-- CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
@@ -20,16 +24,23 @@
             <div id="autocomplete-list" class="autocomplete-items"></div>
         </div>
 
-        
         <!-- INTERVALO -->
         <select id="intervalo">
             <option value="1d">Diário</option>
             <option value="1h">1 hora</option>
             <option value="15m">15 minutos</option>
+            <option value="1wk">Semanal</option>
+            <option value="1mo">Mensal</option>
         </select>
 
         <!-- BOTÃO -->
         <button onclick="avaliar()">Avaliar Ativo</button>
+
+        <!-- GRÁFICO -->
+        <div class="card">
+            <h3>Gráfico</h3>
+            <canvas id="grafico" height="300"></canvas>
+        </div>
 
         <!-- RESULTADO -->
         <div id="resultado"></div>
