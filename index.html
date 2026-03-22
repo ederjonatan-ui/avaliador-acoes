@@ -3,41 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Avaliador Ações</title>
-    <style> /* Add some basic styling */ </style>
+    <title>Stock Evaluator</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .stock-list { margin: 20px 0; }
+        .stock-item { cursor: pointer; padding: 10px; border: 1px solid #ccc; margin: 5px 0; }
+        .filter { margin-bottom: 10px; }
+    </style>
 </head>
 <body>
-    <h1>Avaliador Ações</h1>
-    <label for="time-period">Select Time Period:</label>
-    <select id="time-period">
-        <option value="hourly">Hourly</option>
-        <option value="daily">Daily</option>
-        <option value="weekly">Weekly</option>
-        <option value="annual">Annual</option>
-    </select>
-
-    <div id="quote-container">
-        <p id="quote">Current Quote: <span id="current-quote">Loading...</span></p>
+    <h1>Stock Evaluator</h1>
+    <div class="filter">
+        <button id="period-hr">Horário</button>
+        <button id="period-daily">Diário</button>
+        <button id="period-weekly">Semanal</button>
+        <button id="period-annually">Anual</button>
     </div>
+    <div class="stock-list" id="stockList">
+        <div class="stock-item" data-ticker="AAPL">Apple Inc. (AAPL)</div>
+        <div class="stock-item" data-ticker="MSFT">Microsoft Corp (MSFT)</div>
+        <div class="stock-item" data-ticker="GOOGL">Alphabet Inc. (GOOGL)</div>
+        <div class="stock-item" data-ticker="AMZN">Amazon.com Inc. (AMZN)</div>
+    </div>
+    <input type="text" id="tickerField" placeholder="Enter stock ticker" />
 
     <script>
-        const quoteContainer = document.getElementById('quote-container');
-        const currentQuoteElement = document.getElementById('current-quote');
-
-        async function fetchQuote() {
-            try {
-                // Fetch current quote from an API
-                const response = await fetch('API_URL'); // Replace with actual API URL
-                const data = await response.json();
-                currentQuoteElement.innerText = data.quote;
-            } catch (error) {
-                console.error('Error fetching quote:', error);
-                // Fallback to last closing price
-                currentQuoteElement.innerText = 'Last Closing Price: $XYZ'; // Replace XYZ with actual last closing price
-            }
-        }
-
-        fetchQuote();
+        document.querySelectorAll('.stock-item').forEach(item => {
+            item.addEventListener('click', function() {
+                document.getElementById('tickerField').value = this.getAttribute('data-ticker');
+            });
+        });
     </script>
 </body>
 </html>
