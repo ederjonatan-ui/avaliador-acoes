@@ -11,8 +11,8 @@
     body {
         margin: 0;
         font-family: Arial, sans-serif;
-        background: #0b0f19;
-        color: white;
+        background: #f4f4f4;
+        color: #000000;
         padding: 10px;
     }
 
@@ -24,30 +24,38 @@
     h2 {
         margin-top: 10px;
         font-size: 16px;
-        color: #9bb0ff;
+        color: #1a237e;
     }
 
     .quadro {
-        background: #111522;
+        background: #ffffff;
         padding: 15px;
         border-radius: 12px;
         max-width: 600px;
         margin: auto;
         position: relative;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    label {
+        font-size: 12px;
+        color: #555;
+        display: block;
+        margin-bottom: 2px;
     }
 
     input {
         width: 100%;
         padding: 10px;
         border-radius: 8px;
-        border: none;
+        border: 1px solid #ccc;
         margin-bottom: 8px;
         font-size: 14px;
     }
 
     .sugestoes {
-        background: #1a1f2e;
-        border: 1px solid #2a3145;
+        background: #ffffff;
+        border: 1px solid #ccc;
         border-radius: 8px;
         max-height: 180px;
         overflow-y: auto;
@@ -60,10 +68,11 @@
     .sugestao-item {
         padding: 10px;
         cursor: pointer;
+        font-size: 13px;
     }
 
     .sugestao-item:hover {
-        background: #2a3145;
+        background: #e3f2fd;
     }
 
     button {
@@ -78,25 +87,25 @@
     }
 
     .btnAvaliar { background: #1a73e8; color: white; }
-    .btnTransacao { background: #ffaa00; }
-    .btnReset { background: #ff4444; }
+    .btnTransacao { background: #ffb300; color: #000; }
+    .btnReset { background: #e53935; color: white; }
 
     .card {
         margin-top: 15px;
         padding-bottom: 10px;
-        border-bottom: 1px solid #222a3d;
+        border-bottom: 1px solid #ddd;
     }
 
     .timer {
         font-size: 22px;
         font-weight: bold;
-        color: #ffcc00;
+        color: #f57c00;
     }
 
     .progresso {
         width: 100%;
         height: 10px;
-        background: #222;
+        background: #eee;
         border-radius: 5px;
         overflow: hidden;
         margin-top: 10px;
@@ -132,12 +141,11 @@
 
     <label for="ticker">Ticker</label>
     <input id="ticker" placeholder="Ex.: PETR4.SA ou BTC-USD">
-
     <div id="sugestoes" class="sugestoes"></div>
 
     <button class="btnAvaliar" onclick="avaliar()">Avaliar</button>
 
-    <div id="chart" style="height: 300px;"></div>
+    <div id="chart" style="height: 300px; margin-top: 10px;"></div>
 
     <div class="card">
         <h2>Recomendação</h2>
@@ -157,6 +165,11 @@
     <div class="card">
         <h2>Ganho / Perda</h2>
         <div id="ganho">---</div>
+    </div>
+
+    <div class="card">
+        <h2>Margem de Acerto</h2>
+        <div id="acuracia">---</div>
     </div>
 
     <div class="card">
@@ -182,7 +195,7 @@ const boxSugestoes = document.getElementById("sugestoes");
 
 inputTicker.addEventListener("input", buscarSugestoes);
 
-// AUTOCOMPLETE GLOBAL
+// AUTOCOMPLETE GLOBAL (Yahoo Finance Search + proxy)
 async function buscarSugestoes() {
     const texto = inputTicker.value.trim();
 
@@ -191,7 +204,7 @@ async function buscarSugestoes() {
         return;
     }
 
-    const url = `https://corsproxy.io/?https://query2.finance.yahoo.com/v1/finance/search?q=${texto}`;
+    const url = `https://corsproxy.io/?https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(texto)}`;
 
     try {
         const resp = await fetch(url);
@@ -262,6 +275,7 @@ async function avaliar() {
         return;
     }
 
+    // Ganho/perda na semana
     const primeiro = closes[0];
     const ultimo = closes[closes.length - 1];
     const desempenhoSemana = ((ultimo - primeiro) / primeiro) * 100;
@@ -269,8 +283,9 @@ async function avaliar() {
     document.getElementById("ganho").innerHTML =
         `<b>${desempenhoSemana.toFixed(2)}%</b> na última semana`;
 
-    const mm20 = closes.slice(-20).reduce((a,b)=>a+b,0) / 20;
-    const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0) / 50;
+    // MM20 e MM50 (no último ponto)
+    const mm20 = closes.slice(-20).reduce((a,b)=>a+b,0) / Math.min(20, closes.length);
+    const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0) / Math.min(50, closes.length);
 
     const ultimoPreco = closes[closes.length - 1];
 
@@ -278,17 +293,17 @@ async function avaliar() {
     else if (ultimoPreco < mm20 && mm20 < mm50) recomendacao = "VENDA";
     else recomendacao = "MANTER";
 
-    // PREÇO IDEAL
+    // Preço ideal (MM20)
     let precoIdeal = mm20.toFixed(2);
     let textoRecomendacao = "";
 
     if (recomendacao === "COMPRA") {
         textoRecomendacao =
-            `<b>COMPRA</b> — Preço ideal: <span style="color:#00ff88">R$ ${precoIdeal}</span>`;
+            `<b>COMPRA</b> — Preço ideal: <span style="color:#2e7d32">R$ ${precoIdeal}</span>`;
     }
     else if (recomendacao === "VENDA") {
         textoRecomendacao =
-            `<b>VENDA</b> — Preço ideal: <span style="color:#ff4444">R$ ${precoIdeal}</span>`;
+            `<b>VENDA</b> — Preço ideal: <span style="color:#c62828">R$ ${precoIdeal}</span>`;
     }
     else {
         textoRecomendacao =
@@ -297,28 +312,66 @@ async function avaliar() {
 
     document.getElementById("resultado").innerHTML = textoRecomendacao;
 
-    // TEMPO INTELIGENTE
+    // Margem de acerto (backtest simples na própria série)
+    let acertos = 0;
+    let erros = 0;
+
+    for (let i = 0; i < closes.length - 1; i++) {
+        const precoAtual = closes[i];
+        const precoSeguinte = closes[i + 1];
+
+        const mm20_i = closes.slice(Math.max(0, i - 19), i + 1)
+                             .reduce((a,b)=>a+b,0) / Math.min(20, i+1);
+
+        const mm50_i = closes.slice(Math.max(0, i - 49), i + 1)
+                             .reduce((a,b)=>a+b,0) / Math.min(50, i+1);
+
+        let rec = "MANTER";
+
+        if (precoAtual > mm20_i && mm20_i > mm50_i) rec = "COMPRA";
+        else if (precoAtual < mm20_i && mm20_i < mm50_i) rec = "VENDA";
+
+        if (rec === "COMPRA") {
+            if (precoSeguinte > precoAtual) acertos++;
+            else erros++;
+        }
+
+        if (rec === "VENDA") {
+            if (precoSeguinte < precoAtual) acertos++;
+            else erros++;
+        }
+    }
+
+    const total = acertos + erros;
+    let taxaAcerto = total > 0 ? (acertos / total * 100).toFixed(2) : "0.00";
+
+    document.getElementById("acuracia").innerHTML =
+        `<b>${taxaAcerto}%</b> de acerto nas recomendações (histórico recente)`;
+
+    // Tempo inteligente
     let tempoRecomendado = 30;
     if (recomendacao === "COMPRA") tempoRecomendado = 45;
     if (recomendacao === "VENDA") tempoRecomendado = 20;
 
-    // GRÁFICO
+    // Gráfico em linhas + tema claro
     const trace = {
         x: timestamps.map(t => new Date(t * 1000)),
-        open: candles.open,
-        close: candles.close,
-        high: candles.high,
-        low: candles.low,
-        type: "candlestick",
-        increasing: { line: { color: "#00ff88" }},
-        decreasing: { line: { color: "#ff4444" }}
+        y: closes,
+        type: "scatter",
+        mode: "lines",
+        line: {
+            color: "#1976d2",
+            width: 3
+        }
     };
 
     Plotly.newPlot("chart", [trace], {
         margin: { t: 20 },
-        paper_bgcolor: "#0b0f19",
-        plot_bgcolor: "#0b0f19",
-        font: { color: "white" }
+        paper_bgcolor: "#ffffff",
+        plot_bgcolor: "#ffffff",
+        font: { color: "#000000" },
+        xaxis: { gridcolor: "#e0e0e0" },
+        yaxis: { gridcolor: "#e0e0e0" }
     });
 
     iniciarContagem(tempoRecomendado);
@@ -366,6 +419,7 @@ function resetarSistema() {
     document.getElementById("resultado").innerText = "---";
     document.getElementById("metodo").innerText = "---";
     document.getElementById("tempoSugestao").innerText = "---";
+    document.getElementById("acuracia").innerText = "---";
     document.getElementById("progressoBarra").style.width = "100%";
     alert("Sistema redefinido");
 }
