@@ -183,7 +183,7 @@ Recomendação: ${recomendacao}
 }
 
 // ======================================================
-// GRÁFICO AO VIVO (COM FALLBACK)
+// GRÁFICO AO VIVO (CANDLE + LINHA + FALLBACK)
 // ======================================================
 let graficoAtual = null;
 
@@ -192,43 +192,34 @@ function plotarGrafico(chartData) {
     const ctx = canvas.getContext("2d");
 
     const timestamps = chartData.timestamp || [];
-    const closes = chartData.indicators?.quote?.[0]?.close || [];
-    const opens = chartData.indicators?.quote?.[0]?.open || [];
+    const quote = chartData.indicators?.quote?.[0] || {};
+    const opens = quote.open || [];
+    const highs = quote.high || [];
+    const lows = quote.low || [];
+    const closes = quote.close || [];
 
     // ================================
     // FALLBACK: SE NÃO HÁ DADOS
     // ================================
     if (timestamps.length === 0 || closes.length === 0) {
-        console.warn("Sem dados suficientes. Usando fallback.");
-
         const agora = new Date();
         const ultimoPreco = opens?.[0] || closes?.[0] || 0;
-
-        const fallbackLabels = [agora];
-        const fallbackData = [ultimoPreco];
 
         if (graficoAtual) graficoAtual.destroy();
 
         graficoAtual = new Chart(ctx, {
             type: "line",
             data: {
-                labels: fallbackLabels,
+                labels: [agora],
                 datasets: [{
                     label: "Último preço disponível",
-                    data: fallbackData,
+                    data: [ultimoPreco],
                     borderColor: "#ffcc00",
                     backgroundColor: "rgba(255,204,0,0.3)",
                     borderWidth: 3,
                     pointRadius: 6,
                     tension: 0
                 }]
-            },
-            options: {
-                responsive: true,
-                scales: {
-                    x: { type: "time", time: { unit: "day" } },
-                    y: { beginAtZero: false }
-                }
             }
         });
 
@@ -236,30 +227,51 @@ function plotarGrafico(chartData) {
     }
 
     // ================================
-    // GRÁFICO NORMAL
+    // PREPARAR DADOS PARA CANDLESTICK
     // ================================
-    const labels = timestamps.map(t => new Date(t * 1000));
+    const candles = timestamps.map((t, i) => ({
+        x: new Date(t * 1000),
+        o: opens[i],
+        h: highs[i],
+        l: lows[i],
+        c: closes[i]
+    }));
 
+    // ================================
+    // GRÁFICO COMBINADO (CANDLE + LINHA)
+    // ================================
     if (graficoAtual) graficoAtual.destroy();
 
     graficoAtual = new Chart(ctx, {
-        type: "line",
         data: {
-            labels: labels,
-            datasets: [{
-                label: "Preço",
-                data: closes,
-                borderColor: "#58a6ff",
-                backgroundColor: "rgba(88,166,255,0.2)",
-                borderWidth: 2,
-                pointRadius: 0,
-                tension: 0.2
-            }]
+            datasets: [
+                {
+                    type: "candlestick",
+                    label: "Candles",
+                    data: candles,
+                    borderColor: "#fff",
+                    color: {
+                        up: "#2ea043",
+                        down: "#f85149",
+                        unchanged: "#999"
+                    }
+                },
+                {
+                    type: "line",
+                    label: "Fechamento",
+                    data: candles.map(c => ({ x: c.x, y: c.c })),
+                    borderColor: "#58a6ff",
+                    backgroundColor: "rgba(88,166,255,0.2)",
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.2
+                }
+            ]
         },
         options: {
             responsive: true,
             scales: {
-                x: { type: "time", time: { unit: "day" } },
+                x: { type: "time" },
                 y: { beginAtZero: false }
             }
         }
