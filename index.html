@@ -110,4 +110,198 @@
         font-size: 12px;
         color: #c0c6ff;
         display: block;
-        margin-bottom
+        margin-bottom: 2px;
+    }
+</style>
+</head>
+
+<body>
+
+<audio id="alertaSom">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+</audio>
+
+<h1>Avaliador de Ações e Criptomoedas</h1>
+
+<div class="quadro">
+
+    <label for="ticker">Ticker</label>
+    <input id="ticker" placeholder="Ex.: PETR4.SA ou BTC-USD">
+
+    <button class="btnAvaliar" onclick="avaliar()">Avaliar</button>
+
+    <div id="chart" style="height: 300px;"></div>
+
+    <div class="card">
+        <h2>Recomendação</h2>
+        <div id="resultado">---</div>
+    </div>
+
+    <div class="card">
+        <h2>Método Mais Indicado</h2>
+        <div id="metodo">---</div>
+    </div>
+
+    <div class="card">
+        <h2>Tempo Sugerido de Permanência</h2>
+        <div id="tempoSugestao">---</div>
+    </div>
+
+    <div class="card">
+        <h2>Ganho / Perda</h2>
+        <div id="ganho">---</div>
+    </div>
+
+    <div class="card">
+        <h2>Tempo Restante</h2>
+        <div id="contador" class="timer">--</div>
+
+        <div class="progresso">
+            <div id="progressoBarra" class="progressoBarra"></div>
+        </div>
+    </div>
+
+    <button class="btnTransacao" onclick="registrarTransacao()">Registrar Transação</button>
+    <button class="btnReset" onclick="resetarSistema()">Redefinir</button>
+
+</div>
+
+<h2 style="margin-top:25px;">Ativos com Melhores Projeções</h2>
+<div id="listaAcoes"></div>
+
+<script>
+let timer = null;
+let recomendacao = null;
+let horarioTransacao = null;
+
+function getLastWeekRange() {
+    const now = Math.floor(Date.now() / 1000);
+    const weekAgo = now - (7 * 24 * 60 * 60);
+    return { period1: weekAgo, period2: now };
+}
+
+async function avaliar() {
+    const ticker = document.getElementById("ticker").value.trim();
+
+    if (!ticker) {
+        alert("Digite um ticker antes de avaliar.");
+        return;
+    }
+
+    // Sempre usar última semana
+    const range = getLastWeekRange();
+    const period1 = range.period1;
+    const period2 = range.period2;
+
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${period1}&period2=${period2}&interval=1d`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    if (!data.chart || data.chart.error) {
+        alert("Não foi possível obter dados para esse ticker.");
+        return;
+    }
+
+    const result = data.chart.result[0];
+    const timestamps = result.timestamp;
+    const candles = result.indicators.quote[0];
+    const closes = candles.close;
+
+    if (!closes || closes.length < 2) {
+        alert("Poucos dados disponíveis.");
+        return;
+    }
+
+    // DESEMPENHO DA SEMANA
+    const primeiro = closes[0];
+    const ultimo = closes[closes.length - 1];
+    const desempenhoSemana = ((ultimo - primeiro) / primeiro) * 100;
+
+    document.getElementById("ganho").innerHTML =
+        `<b>${desempenhoSemana.toFixed(2)}%</b> na última semana`;
+
+    // MÉDIAS
+    const mm20 = closes.slice(-20).reduce((a,b)=>a+b,0) / 20;
+    const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0) / 50;
+
+    const ultimoPreco = closes[closes.length - 1];
+
+    if (ultimoPreco > mm20 && mm20 > mm50) recomendacao = "COMPRA";
+    else if (ultimoPreco < mm20 && mm20 < mm50) recomendacao = "VENDA";
+    else recomendacao = "MANTER";
+
+    document.getElementById("resultado").innerHTML = `<b>${recomendacao}</b>`;
+
+    // GRÁFICO
+    const trace = {
+        x: timestamps.map(t => new Date(t * 1000)),
+        open: candles.open,
+        close: candles.close,
+        high: candles.high,
+        low: candles.low,
+        type: "candlestick",
+        increasing: { line: { color: "#00ff88" }},
+        decreasing: { line: { color: "#ff4444" }}
+    };
+
+    Plotly.newPlot("chart", [trace], {
+        margin: { t: 20 },
+        paper_bgcolor: "#0b0f19",
+        plot_bgcolor: "#0b0f19",
+        font: { color: "white" }
+    });
+
+    iniciarContagem(30);
+}
+
+function iniciarContagem(seg) {
+    clearInterval(timer);
+
+    let t = seg;
+    const barra = document.getElementById("progressoBarra");
+    const contador = document.getElementById("contador");
+    const alertaSom = document.getElementById("alertaSom");
+
+    contador.classList.remove("flash");
+
+    timer = setInterval(() => {
+        contador.innerText = `Melhor momento em ${t}s`;
+        barra.style.width = (t / seg * 100) + "%";
+        t--;
+
+        if (t < 0) {
+            clearInterval(timer);
+
+            let msg = recomendacao === "COMPRA" ? "Momento ideal para COMPRA!" :
+                      recomendacao === "VENDA" ? "Momento ideal para VENDA!" :
+                      "Nenhuma ação recomendada.";
+
+            contador.innerText = msg;
+            contador.classList.add("flash");
+            alertaSom.play();
+            barra.style.width = "0%";
+        }
+    }, 1000);
+}
+
+function registrarTransacao() {
+    horarioTransacao = new Date();
+    alert("Transação registrada!");
+}
+
+function resetarSistema() {
+    horarioTransacao = null;
+    clearInterval(timer);
+
+    document.getElementById("contador").innerText = "--";
+    document.getElementById("ganho").innerText = "---";
+    document.getElementById("resultado").innerText = "---";
+    document.getElementById("metodo").innerText = "---";
+    document.getElementById("tempoSugestao").innerText = "---";
+    document.getElementById("progressoBarra").style.width = "100%";
+    alert("Sistema redefinido");
+}
+</script>
+
+</body>
+</html>
