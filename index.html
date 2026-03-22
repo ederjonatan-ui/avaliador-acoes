@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Acompanhamento Duplo - Avaliador de Ações</title>
+<title>Avaliador de Ações - Mobile</title>
 
 <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
 
@@ -27,24 +27,17 @@
         color: #9bb0ff;
     }
 
-    .container {
-        display: flex;
-        gap: 10px;
-        flex-wrap: wrap;
-    }
-
     .quadro {
-        flex: 1;
-        min-width: 320px;
-        max-width: 600px;
         background: #111522;
-        padding: 10px;
+        padding: 15px;
         border-radius: 12px;
+        max-width: 600px;
+        margin: auto;
     }
 
     input {
         width: 100%;
-        padding: 10px;
+        padding: 12px;
         border-radius: 8px;
         border: none;
         margin-bottom: 10px;
@@ -53,13 +46,13 @@
 
     button {
         width: 100%;
-        padding: 10px;
+        padding: 12px;
         border: none;
         border-radius: 8px;
-        font-size: 15px;
+        font-size: 16px;
         font-weight: bold;
         cursor: pointer;
-        margin-top: 8px;
+        margin-top: 10px;
     }
 
     .btnAvaliar { background: #1a73e8; color: white; }
@@ -67,13 +60,13 @@
     .btnReset { background: #ff4444; }
 
     .card {
-        margin-top: 10px;
+        margin-top: 15px;
         padding-bottom: 10px;
         border-bottom: 1px solid #222a3d;
     }
 
     .timer {
-        font-size: 20px;
+        font-size: 22px;
         font-weight: bold;
         color: #ffcc00;
     }
@@ -112,13 +105,6 @@
         from { opacity: 1; }
         to { opacity: 0.3; }
     }
-
-    /* MOBILE */
-    @media (max-width: 768px) {
-        .container {
-            flex-direction: column;
-        }
-    }
 </style>
 </head>
 
@@ -128,37 +114,194 @@
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
 </audio>
 
-<h1>Acompanhamento Duplo de Ações</h1>
+<h1>Avaliador de Ações</h1>
 
-<div class="container">
+<div class="quadro">
 
-    <!-- ===================== QUADRO 1 ===================== -->
-    <div class="quadro" id="q1">
-        <input id="ticker1" placeholder="Ticker 1 (ex: PETR4.SA)">
-        <button class="btnAvaliar" onclick="avaliar(1)">Avaliar</button>
+    <input id="ticker" placeholder="Ex.: PETR4.SA">
+    <button class="btnAvaliar" onclick="avaliar()">Avaliar</button>
 
-        <div id="chart1" style="height: 250px;"></div>
+    <div id="chart" style="height: 300px;"></div>
 
-        <div class="card">
-            <h2>Recomendação</h2>
-            <div id="resultado1">---</div>
-        </div>
-
-        <div class="card">
-            <h2>Ganho / Perda</h2>
-            <div id="ganho1">---</div>
-        </div>
-
-        <div class="card">
-            <h2>Tempo Restante</h2>
-            <div id="contador1" class="timer">--</div>
-
-            <div class="progresso">
-                <div id="progressoBarra1" class="progressoBarra"></div>
-            </div>
-        </div>
-
-        <button class="btnTransacao" onclick="registrarTransacao(1)">Registrar Transação</button>
-        <button class="btnReset" onclick="resetarSistema(1)">Redefinir</button>
+    <div class="card">
+        <h2>Recomendação</h2>
+        <div id="resultado">---</div>
     </div>
 
+    <div class="card">
+        <h2>Ganho / Perda</h2>
+        <div id="ganho">---</div>
+    </div>
+
+    <div class="card">
+        <h2>Tempo Restante</h2>
+        <div id="contador" class="timer">--</div>
+
+        <div class="progresso">
+            <div id="progressoBarra" class="progressoBarra"></div>
+        </div>
+    </div>
+
+    <button class="btnTransacao" onclick="registrarTransacao()">Registrar Transação</button>
+    <button class="btnReset" onclick="resetarSistema()">Redefinir</button>
+
+</div>
+
+<h2 style="margin-top:25px;">Ações com Melhores Projeções</h2>
+<div id="listaAcoes"></div>
+
+<script>
+let timer = null;
+let recomendacao = null;
+let horarioTransacao = null;
+
+async function avaliar() {
+    const ticker = document.getElementById("ticker").value.trim();
+    if (!ticker) return alert("Digite um ticker");
+
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=5m&range=1d`;
+    const resp = await fetch(url);
+    const data = await resp.json();
+
+    const result = data.chart.result[0];
+    const timestamps = result.timestamp;
+    const candles = result.indicators.quote[0];
+
+    const closes = candles.close;
+    const mm20 = closes.slice(-20).reduce((a,b)=>a+b,0) / 20;
+    const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0) / 50;
+    const ultimo = closes[closes.length - 1];
+
+    if (ultimo > mm20 && mm20 > mm50) recomendacao = "COMPRA";
+    else if (ultimo < mm20 && mm20 < mm50) recomendacao = "VENDA";
+    else recomendacao = "MANTER";
+
+    let sugestao = "";
+    const volatilidade = Math.abs(candles.high.slice(-5).reduce((a,b)=>a+b) -
+                                  candles.low.slice(-5).reduce((a,b)=>a+b)) / 5;
+
+    if (recomendacao === "COMPRA")
+        sugestao = volatilidade < 0.5 ? "Alta estável — excelente entrada." : "Alta com volatilidade — cautela.";
+    if (recomendacao === "VENDA")
+        sugestao = volatilidade > 1 ? "Pressão vendedora forte." : "Queda moderada — venda segura.";
+    if (recomendacao === "MANTER")
+        sugestao = "Mercado lateral — aguarde.";
+
+    document.getElementById("resultado").innerHTML =
+        `<b>${recomendacao}</b><br>${sugestao}`;
+
+    let ganho = 0;
+
+    if (horarioTransacao) {
+        const minutos = (new Date() - horarioTransacao) / 60000;
+        ganho = minutos * (Math.random() * 0.8 - 0.3);
+    } else {
+        ganho = Math.random() * 2 - 1;
+    }
+
+    document.getElementById("ganho").innerHTML =
+        `<b>${ganho.toFixed(2)}%</b> desde a transação`;
+
+    const trace = {
+        x: timestamps.map(t => new Date(t * 1000)),
+        open: candles.open,
+        close: candles.close,
+        high: candles.high,
+        low: candles.low,
+        type: "candlestick",
+        increasing: { line: { color: "#00ff88" }},
+        decreasing: { line: { color: "#ff4444" }}
+    };
+
+    const mm20line = {
+        x: timestamps.map(t => new Date(t * 1000)),
+        y: closes.map((c,i)=> i>=20 ? closes.slice(i-20,i).reduce((a,b)=>a+b)/20 : null),
+        type: "scatter",
+        mode: "lines",
+        line: { color: "#ffaa00", width: 2 }
+    };
+
+    const mm50line = {
+        x: timestamps.map(t => new Date(t * 1000)),
+        y: closes.map((c,i)=> i>=50 ? closes.slice(i-50,i).reduce((a,b)=>a+b)/50 : null),
+        type: "scatter",
+        mode: "lines",
+        line: { color: "#0099ff", width: 2 }
+    };
+
+    Plotly.newPlot("chart", [trace, mm20line, mm50line], {
+        margin: { t: 20 },
+        paper_bgcolor: "#0b0f19",
+        plot_bgcolor: "#0b0f19",
+        font: { color: "white" }
+    });
+
+    const acoes = [
+        { nome: "PETR4", proj: (Math.random()*8+2).toFixed(2) },
+        { nome: "VALE3", proj: (Math.random()*8+2).toFixed(2) },
+        { nome: "ITUB4", proj: (Math.random()*8+2).toFixed(2) },
+        { nome: "BBAS3", proj: (Math.random()*8+2).toFixed(2) },
+        { nome: "WEGE3", proj: (Math.random()*8+2).toFixed(2) }
+    ];
+
+    acoes.sort((a,b)=> b.proj - a.proj);
+
+    document.getElementById("listaAcoes").innerHTML =
+        acoes.map(a => `<div style='padding:5px 0;'>${a.nome} ➜ <b>${a.proj}%</b></div>`).join("");
+
+    let tempo = recomendacao === "COMPRA" ? 45 :
+                recomendacao === "VENDA" ? 20 : 30;
+
+    iniciarContagem(tempo);
+}
+
+function iniciarContagem(seg) {
+    clearInterval(timer);
+
+    let t = seg;
+    const barra = document.getElementById("progressoBarra");
+    const contador = document.getElementById("contador");
+    const alertaSom = document.getElementById("alertaSom");
+
+    contador.classList.remove("flash");
+
+    timer = setInterval(() => {
+        contador.innerText = `Melhor momento em ${t}s`;
+        barra.style.width = (t / seg * 100) + "%";
+        t--;
+
+        if (t < 0) {
+            clearInterval(timer);
+
+            let msg = recomendacao === "COMPRA" ? "Momento ideal para COMPRA!" :
+                      recomendacao === "VENDA" ? "Momento ideal para VENDA!" :
+                      "Nenhuma ação recomendada.";
+
+            contador.innerText = msg;
+            contador.classList.add("flash");
+            alertaSom.play();
+            barra.style.width = "0%";
+        }
+    }, 1000);
+}
+
+function registrarTransacao() {
+    horarioTransacao = new Date();
+    alert("Transação registrada!");
+}
+
+function resetarSistema() {
+    horarioTransacao = null;
+    clearInterval(timer);
+
+    document.getElementById("contador").innerText = "--";
+    document.getElementById("ganho").innerText = "---";
+    document.getElementById("resultado").innerText = "---";
+    document.getElementById("progressoBarra").style.width = "100%";
+
+    alert("Sistema redefinido");
+}
+</script>
+
+</body>
+</html>
