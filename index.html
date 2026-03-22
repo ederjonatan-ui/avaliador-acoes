@@ -129,6 +129,16 @@
     </div>
 
     <div class="card">
+        <h2>Método Mais Indicado</h2>
+        <div id="metodo">---</div>
+    </div>
+
+    <div class="card">
+        <h2>Tempo Sugerido de Permanência</h2>
+        <div id="tempoSugestao">---</div>
+    </div>
+
+    <div class="card">
         <h2>Ganho / Perda</h2>
         <div id="ganho">---</div>
     </div>
@@ -172,24 +182,58 @@ async function avaliar() {
     const mm50 = closes.slice(-50).reduce((a,b)=>a+b,0) / 50;
     const ultimo = closes[closes.length - 1];
 
+    // ============================
+    // RECOMENDAÇÃO
+    // ============================
     if (ultimo > mm20 && mm20 > mm50) recomendacao = "COMPRA";
     else if (ultimo < mm20 && mm20 < mm50) recomendacao = "VENDA";
     else recomendacao = "MANTER";
 
-    let sugestao = "";
+    // ============================
+    // SUGESTÃO DE MÉTODO
+    // ============================
+    let metodo = "";
+    let tempoSugestao = "";
     const volatilidade = Math.abs(candles.high.slice(-5).reduce((a,b)=>a+b) -
                                   candles.low.slice(-5).reduce((a,b)=>a+b)) / 5;
 
-    if (recomendacao === "COMPRA")
-        sugestao = volatilidade < 0.5 ? "Alta estável — excelente entrada." : "Alta com volatilidade — cautela.";
-    if (recomendacao === "VENDA")
-        sugestao = volatilidade > 1 ? "Pressão vendedora forte." : "Queda moderada — venda segura.";
-    if (recomendacao === "MANTER")
-        sugestao = "Mercado lateral — aguarde.";
+    if (recomendacao === "COMPRA") {
+        if (volatilidade < 0.6) {
+            metodo = "SWING TRADE";
+            tempoSugestao = "2 a 5 dias";
+        } else {
+            metodo = "DAY TRADE";
+            tempoSugestao = "10 a 20 minutos";
+        }
+    }
+
+    if (recomendacao === "VENDA") {
+        if (volatilidade > 1) {
+            metodo = "DAY TRADE";
+            tempoSugestao = "5 a 15 minutos";
+        } else {
+            metodo = "SWING TRADE";
+            tempoSugestao = "1 a 3 dias";
+        }
+    }
+
+    if (recomendacao === "MANTER") {
+        metodo = "AGUARDAR";
+        tempoSugestao = "Sem operação recomendada";
+    }
 
     document.getElementById("resultado").innerHTML =
-        `<b>${recomendacao}</b><br>${sugestao}`;
+        `<b>${recomendacao}</b>`;
 
+    document.getElementById("metodo").innerHTML =
+        `<b>${metodo}</b>`;
+
+    document.getElementById("tempoSugestao").innerHTML =
+        `<b>${tempoSugestao}</b>`;
+
+    // ============================
+    // PROJEÇÃO DE GANHO
+    // ============================
     let ganho = 0;
 
     if (horarioTransacao) {
@@ -202,6 +246,9 @@ async function avaliar() {
     document.getElementById("ganho").innerHTML =
         `<b>${ganho.toFixed(2)}%</b> desde a transação`;
 
+    // ============================
+    // GRÁFICO
+    // ============================
     const trace = {
         x: timestamps.map(t => new Date(t * 1000)),
         open: candles.open,
@@ -236,6 +283,9 @@ async function avaliar() {
         font: { color: "white" }
     });
 
+    // ============================
+    // LISTA DE MELHORES AÇÕES
+    // ============================
     const acoes = [
         { nome: "PETR4", proj: (Math.random()*8+2).toFixed(2) },
         { nome: "VALE3", proj: (Math.random()*8+2).toFixed(2) },
@@ -249,6 +299,9 @@ async function avaliar() {
     document.getElementById("listaAcoes").innerHTML =
         acoes.map(a => `<div style='padding:5px 0;'>${a.nome} ➜ <b>${a.proj}%</b></div>`).join("");
 
+    // ============================
+    // CONTADOR
+    // ============================
     let tempo = recomendacao === "COMPRA" ? 45 :
                 recomendacao === "VENDA" ? 20 : 30;
 
@@ -297,6 +350,8 @@ function resetarSistema() {
     document.getElementById("contador").innerText = "--";
     document.getElementById("ganho").innerText = "---";
     document.getElementById("resultado").innerText = "---";
+    document.getElementById("metodo").innerText = "---";
+    document.getElementById("tempoSugestao").innerText = "---";
     document.getElementById("progressoBarra").style.width = "100%";
 
     alert("Sistema redefinido");
