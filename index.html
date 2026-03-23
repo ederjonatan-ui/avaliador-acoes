@@ -15,11 +15,12 @@
 </head>
 <body>
 
-    <!-- TELA DE COFRE (SEQUÊNCIA 2207) -->
+    <!-- TELA DE COFRE -->
     <div id="lock-screen">
         <div class="lock-panel">
             <h2>Acesso Restrito</h2>
             <p>Digite a sequência correta</p>
+
             <div id="lock-display">••••</div>
 
             <div class="lock-grid">
@@ -36,7 +37,8 @@
                 <button onclick="pressKey(5)">5</button>
             </div>
 
-            <button id="enter-btn" class="enter-btn" onclick="unlockSite()" disabled>ENTRAR</button>
+            <button id="enter-btn" class="enter-btn" onclick="unlockSite()">ENTRAR</button>
+
             <div id="lock-error"></div>
         </div>
     </div>
@@ -46,13 +48,11 @@
 
         <h1>Avaliador de Ações – IA Híbrida</h1>
 
-        <!-- CAMPO DO ATIVO + AUTOCOMPLETE -->
         <div style="position: relative;">
             <input id="ativo" type="text" placeholder="Digite o ativo...">
             <div id="autocomplete-list" class="autocomplete-items"></div>
         </div>
 
-        <!-- INTERVALO -->
         <select id="intervalo" onchange="avaliar()">
             <option value="1d">Diário</option>
             <option value="1h">1 hora</option>
@@ -63,12 +63,35 @@
 
         <button onclick="avaliar()">Avaliar Ativo</button>
 
-        <!-- GRÁFICO PRINCIPAL -->
         <div class="card">
             <h3>Gráfico de Preço</h3>
             <canvas id="grafico" height="260"></canvas>
         </div>
 
-        <!-- RSI -->
         <div class="card">
-            <h3>
+            <h3>RSI</h3>
+            <canvas id="graficoRSI" height="120"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>MACD</h3>
+            <canvas id="graficoMACD" height="120"></canvas>
+        </div>
+
+        <div class="card">
+            <label>Escolher dia:</label>
+            <input type="range" id="sliderDia" min="0" max="0" value="0" oninput="mudarDia()">
+        </div>
+
+        <div class="card" id="painel-tendencia">
+            <h3>Tendência em Tempo Real</h3>
+            <p id="tendencia-texto">Aguardando análise...</p>
+        </div>
+
+        <div id="resultado"></div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
