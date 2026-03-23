@@ -26,7 +26,7 @@
         </div>
 
         <!-- INTERVALO -->
-        <select id="intervalo">
+        <select id="intervalo" onchange="avaliar()">
             <option value="1d">Diário</option>
             <option value="1h">1 hora</option>
             <option value="15m">15 minutos</option>
@@ -34,7 +34,7 @@
             <option value="1mo">Mensal</option>
         </select>
 
-        <!-- BOTÃO -->
+        <!-- BOTÃO (AINDA EXISTE, MAS NÃO É MAIS NECESSÁRIO) -->
         <button onclick="avaliar()">Avaliar Ativo</button>
 
         <!-- GRÁFICO -->
@@ -42,7 +42,6 @@
             <h3>Gráfico</h3>
             <canvas id="grafico" height="300"></canvas>
         </div>
-        
 
         <!-- SLIDER PARA ESCOLHER O DIA -->
         <div class="card">
