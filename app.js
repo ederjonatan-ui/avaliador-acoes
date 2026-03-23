@@ -4,6 +4,35 @@ const inputAtivo = document.getElementById("ativo");
 const lista = document.getElementById("autocomplete-list");
 let intervaloAuto = null;
 
+// =======================
+// COFRE 2207
+// =======================
+const SEQUENCE = [2, 2, 0, 7];
+let currentInput = [];
+
+function pressKey(num) {
+    currentInput.push(num);
+    if (currentInput.length > 4) currentInput = [num];
+
+    const display = document.getElementById("lock-display");
+    display.textContent = currentInput.map(() => "•").join("");
+
+    const errorDiv = document.getElementById("lock-error");
+    errorDiv.textContent = "";
+
+    if (currentInput.length === 4) {
+        const ok = SEQUENCE.every((v, i) => v === currentInput[i]);
+        if (ok) {
+            document.getElementById("lock-screen").style.display = "none";
+            document.getElementById("main-app").classList.remove("hidden");
+        } else {
+            errorDiv.textContent = "Sequência incorreta";
+            currentInput = [];
+            display.textContent = "••••";
+        }
+    }
+}
+
 // ======================================================
 // AUTOCOMPLETE AUTOMÁTICO
 // ======================================================
@@ -65,12 +94,8 @@ async function avaliar(interno = false) {
         return;
     }
 
-    // ================================
-    // ATUALIZAÇÃO AUTOMÁTICA A CADA 1 MINUTO
-    // ================================
     if (!interno) {
         if (intervaloAuto) clearInterval(intervaloAuto);
-
         intervaloAuto = setInterval(() => {
             avaliar(true);
         }, 60000);
@@ -102,12 +127,13 @@ async function avaliar(interno = false) {
             return;
         }
 
-        // ============================
-        // GRÁFICO
-        // ============================
-        plotarGrafico(chart);
-
+        // GRÁFICOS
         const closes = chart.indicators.quote[0].close;
+        const volumes = chart.indicators.quote[0].volume || [];
+        plotarGrafico(chart, volumes);
+        plotarRSI(chart);
+        plotarMACD(chart);
+
         const precoAtual = closes[closes.length - 1];
 
         const mm20 = media(closes, 20);
@@ -148,6 +174,8 @@ Probabilidade local: ${(probLocal * 100).toFixed(0)}%.
 
         const risco = volatilidade > 2 ? "Alto" :
                       volatilidade > 1 ? "Médio" : "Baixo";
+
+        atualizarPainelTendencia(recomendacao, probLocal, rsi, volatilidade);
 
         resultadoDiv.innerHTML = `
 <div class="card">
@@ -196,12 +224,14 @@ Recomendação: ${recomendacao}
 }
 
 // ======================================================
-// GRÁFICO AO VIVO (CANDLE + LINHA + SLIDER + FALLBACK)
+// GRÁFICO PRINCIPAL (CANDLE + LINHA + MM + VOLUME + ZOOM)
 // ======================================================
 let graficoAtual = null;
+let graficoRSI = null;
+let graficoMACD = null;
 let candlesGlobais = [];
 
-function plotarGrafico(chartData) {
+function plotarGrafico(chartData, volumes) {
     const timestamps = chartData.timestamp || [];
     const quote = chartData.indicators?.quote?.[0] || {};
     const opens = quote.open || [];
@@ -209,12 +239,8 @@ function plotarGrafico(chartData) {
     const lows = quote.low || [];
     const closes = quote.close || [];
 
-    // ================================
-    // CRIAR CANDLES (COM FALLBACK)
-    // ================================
     candlesGlobais = timestamps.map((t, i) => {
         const close = closes[i];
-
         const open = opens[i] ?? close - 0.05;
         const high = highs[i] ?? close + 0.10;
         const low = lows[i] ?? close - 0.10;
@@ -224,20 +250,15 @@ function plotarGrafico(chartData) {
             o: open,
             h: high,
             l: low,
-            c: close
+            c: close,
+            v: volumes[i] || 0
         };
     });
 
-    // ================================
-    // CONFIGURAR SLIDER
-    // ================================
     const slider = document.getElementById("sliderDia");
     slider.max = candlesGlobais.length - 1;
     slider.value = candlesGlobais.length - 1;
 
-    // ================================
-    // DESENHAR GRÁFICO COMPLETO
-    // ================================
     desenharGrafico(candlesGlobais);
 }
 
@@ -246,6 +267,11 @@ function desenharGrafico(candles) {
     const ctx = canvas.getContext("2d");
 
     if (graficoAtual) graficoAtual.destroy();
+
+    const closeLine = candles.map(c => ({ x: c.x, y: c.c }));
+    const mm20Line = calcularSerieMM(candles.map(c => c.c), 20, candles.map(c => c.x));
+    const mm50Line = calcularSerieMM(candles.map(c => c.c), 50, candles.map(c => c.x));
+    const volumeBars = candles.map(c => ({ x: c.x, y: c.v }));
 
     graficoAtual = new Chart(ctx, {
         data: {
@@ -264,10 +290,143 @@ function desenharGrafico(candles) {
                 {
                     type: "line",
                     label: "Fechamento",
-                    data: candles.map(c => ({ x: c.x, y: c.c })),
+                    data: closeLine,
                     borderColor: "#58a6ff",
                     backgroundColor: "rgba(88,166,255,0.2)",
-                    borderWidth: 2,
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.2,
+                    yAxisID: "y"
+                },
+                {
+                    type: "line",
+                    label: "MM20",
+                    data: mm20Line,
+                    borderColor: "#facc15",
+                    borderWidth: 1.2,
+                    pointRadius: 0,
+                    tension: 0.2,
+                    yAxisID: "y"
+                },
+                {
+                    type: "line",
+                    label: "MM50",
+                    data: mm50Line,
+                    borderColor: "#22d3ee",
+                    borderWidth: 1.2,
+                    pointRadius: 0,
+                    tension: 0.2,
+                    yAxisID: "y"
+                },
+                {
+                    type: "bar",
+                    label: "Volume",
+                    data: volumeBars,
+                    backgroundColor: "rgba(148,163,184,0.5)",
+                    borderWidth: 0,
+                    yAxisID: "y1"
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: "index",
+                intersect: false
+            },
+            scales: {
+                x: { type: "time" },
+                y: {
+                    beginAtZero: false,
+                    position: "left"
+                },
+                y1: {
+                    beginAtZero: true,
+                    position: "right",
+                    grid: { drawOnChartArea: false }
+                }
+            },
+            plugins: {
+                legend: { display: true },
+                zoom: {
+                    pan: {
+                        enabled: true,
+                        mode: "x"
+                    },
+                    zoom: {
+                        wheel: { enabled: true },
+                        pinch: { enabled: true },
+                        mode: "x"
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ======================================================
+// GRÁFICO RSI
+// ======================================================
+function plotarRSI(chartData) {
+    const timestamps = chartData.timestamp || [];
+    const closes = chartData.indicators.quote[0].close || [];
+
+    const rsiSerie = calcularSerieRSI(closes, 14, timestamps);
+
+    const canvas = document.getElementById("graficoRSI");
+    const ctx = canvas.getContext("2d");
+
+    if (graficoRSI) graficoRSI.destroy();
+
+    graficoRSI = new Chart(ctx, {
+        type: "line",
+        data: {
+            datasets: [
+                {
+                    label: "RSI",
+                    data: rsiSerie,
+                    borderColor: "#f97316",
+                    backgroundColor: "rgba(249,115,22,0.2)",
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { type: "time" },
+                y: { min: 0, max: 100 }
+            }
+        }
+    });
+}
+
+// ======================================================
+// GRÁFICO MACD
+// ======================================================
+function plotarMACD(chartData) {
+    const timestamps = chartData.timestamp || [];
+    const closes = chartData.indicators.quote[0].close || [];
+
+    const macdSerie = calcularSerieMACD(closes, timestamps);
+
+    const canvas = document.getElementById("graficoMACD");
+    const ctx = canvas.getContext("2d");
+
+    if (graficoMACD) graficoMACD.destroy();
+
+    graficoMACD = new Chart(ctx, {
+        type: "line",
+        data: {
+            datasets: [
+                {
+                    label: "MACD",
+                    data: macdSerie,
+                    borderColor: "#22c55e",
+                    backgroundColor: "rgba(34,197,94,0.2)",
+                    borderWidth: 1.5,
                     pointRadius: 0,
                     tension: 0.2
                 }
@@ -291,8 +450,36 @@ function mudarDia() {
     const index = parseInt(slider.value);
 
     const candleSelecionado = candlesGlobais[index];
+    if (!candleSelecionado) return;
 
     desenharGrafico([candleSelecionado]);
+}
+
+// ======================================================
+// PAINEL DE TENDÊNCIA
+// ======================================================
+function atualizarPainelTendencia(recomendacao, probLocal, rsi, volatilidade) {
+    const painel = document.getElementById("painel-tendencia");
+    const texto = document.getElementById("tendencia-texto");
+
+    painel.classList.remove("alta", "baixa", "neutro");
+
+    let classe = "neutro";
+    let desc = `Probabilidade: ${(probLocal * 100).toFixed(0)}% | RSI: ${rsi.toFixed(1)} | Vol: ${volatilidade.toFixed(2)}`;
+
+    if (recomendacao === "COMPRA") {
+        classe = "alta";
+        desc = "Tendência de alta. " + desc;
+    } else if (recomendacao === "VENDA") {
+        classe = "baixa";
+        desc = "Tendência de baixa. " + desc;
+    } else {
+        classe = "neutro";
+        desc = "Tendência neutra. " + desc;
+    }
+
+    painel.classList.add(classe);
+    texto.textContent = desc;
 }
 
 // ======================================================
@@ -344,4 +531,36 @@ function extrairTextoIA(dados) {
         return "Erro da IA: " + dados.error;
     }
     return JSON.stringify(dados);
+}
+
+// SÉRIES PARA MM, RSI, MACD
+function calcularSerieMM(closes, n, xs) {
+    const out = [];
+    for (let i = 0; i < closes.length; i++) {
+        if (i < n - 1) continue;
+        const slice = closes.slice(i - n + 1, i + 1);
+        const m = slice.reduce((a, b) => a + b, 0) / slice.length;
+        out.push({ x: xs[i], y: m });
+    }
+    return out;
+}
+
+function calcularSerieRSI(closes, n, timestamps) {
+    const out = [];
+    for (let i = n; i < closes.length; i++) {
+        const slice = closes.slice(i - n, i + 1);
+        const rsi = calcularRSI(slice);
+        out.push({ x: new Date(timestamps[i] * 1000), y: rsi });
+    }
+    return out;
+}
+
+function calcularSerieMACD(closes, timestamps) {
+    const out = [];
+    for (let i = 26; i < closes.length; i++) {
+        const slice = closes.slice(0, i + 1);
+        const macd = calcularMACD(slice);
+        out.push({ x: new Date(timestamps[i] * 1000), y: macd });
+    }
+    return out;
 }
