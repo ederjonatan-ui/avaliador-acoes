@@ -203,4 +203,145 @@ let candlesGlobais = [];
 
 function plotarGrafico(chartData) {
     const timestamps = chartData.timestamp || [];
-    const quote = chartData.indicators?.quote
+    const quote = chartData.indicators?.quote?.[0] || {};
+    const opens = quote.open || [];
+    const highs = quote.high || [];
+    const lows = quote.low || [];
+    const closes = quote.close || [];
+
+    // ================================
+    // CRIAR CANDLES (COM FALLBACK)
+    // ================================
+    candlesGlobais = timestamps.map((t, i) => {
+        const close = closes[i];
+
+        const open = opens[i] ?? close - 0.05;
+        const high = highs[i] ?? close + 0.10;
+        const low = lows[i] ?? close - 0.10;
+
+        return {
+            x: new Date(t * 1000),
+            o: open,
+            h: high,
+            l: low,
+            c: close
+        };
+    });
+
+    // ================================
+    // CONFIGURAR SLIDER
+    // ================================
+    const slider = document.getElementById("sliderDia");
+    slider.max = candlesGlobais.length - 1;
+    slider.value = candlesGlobais.length - 1;
+
+    // ================================
+    // DESENHAR GRÁFICO COMPLETO
+    // ================================
+    desenharGrafico(candlesGlobais);
+}
+
+function desenharGrafico(candles) {
+    const canvas = document.getElementById("grafico");
+    const ctx = canvas.getContext("2d");
+
+    if (graficoAtual) graficoAtual.destroy();
+
+    graficoAtual = new Chart(ctx, {
+        data: {
+            datasets: [
+                {
+                    type: "candlestick",
+                    label: "Candles",
+                    data: candles,
+                    borderColor: "#fff",
+                    color: {
+                        up: "#2ea043",
+                        down: "#f85149",
+                        unchanged: "#999"
+                    }
+                },
+                {
+                    type: "line",
+                    label: "Fechamento",
+                    data: candles.map(c => ({ x: c.x, y: c.c })),
+                    borderColor: "#58a6ff",
+                    backgroundColor: "rgba(88,166,255,0.2)",
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    tension: 0.2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { type: "time" },
+                y: { beginAtZero: false }
+            }
+        }
+    });
+}
+
+// ======================================================
+// SLIDER PARA ESCOLHER O DIA
+// ======================================================
+function mudarDia() {
+    const slider = document.getElementById("sliderDia");
+    const index = parseInt(slider.value);
+
+    const candleSelecionado = candlesGlobais[index];
+
+    desenharGrafico([candleSelecionado]);
+}
+
+// ======================================================
+// FUNÇÕES AUXILIARES
+// ======================================================
+function media(arr, n) {
+    if (arr.length < n) return arr[arr.length - 1];
+    const slice = arr.slice(arr.length - n);
+    return slice.reduce((a, b) => a + b, 0) / slice.length;
+}
+
+function desvioPadrao(arr) {
+    const m = media(arr, arr.length);
+    const variancia = arr.reduce((acc, v) => acc + Math.pow(v - m, 2), 0) / arr.length;
+    return Math.sqrt(variancia);
+}
+
+function calcularRSI(closes) {
+    let ganhos = 0, perdas = 0;
+    for (let i = 1; i < closes.length; i++) {
+        const diff = closes[i] - closes[i - 1];
+        if (diff > 0) ganhos += diff;
+        else perdas -= diff;
+    }
+    const rs = ganhos / (perdas || 1);
+    return 100 - (100 / (1 + rs));
+}
+
+function calcularMACD(closes) {
+    return media(closes, 12) - media(closes, 26);
+}
+
+function calcularProbabilidade(mm20, mm50, rsi, macd) {
+    let score = 0;
+    if (mm20 > mm50) score += 0.3;
+    if (rsi < 70 && rsi > 30) score += 0.2;
+    if (macd > 0) score += 0.3;
+    return Math.min(1, score + 0.2);
+}
+
+function extrairTextoIA(dados) {
+    if (Array.isArray(dados) && dados[0]?.generated_text) {
+        return dados[0].generated_text;
+    }
+    if (dados.generated_text) {
+        return dados.generated_text;
+    }
+    if (dados.error) {
+        return "Erro da IA: " + dados.error;
+    }
+    return JSON.stringify(dados);
+}
