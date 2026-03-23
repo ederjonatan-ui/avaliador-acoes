@@ -91,4 +91,44 @@ function getIntervalYahoo() {
     if (v === "15m") return "15m";
     if (v === "1h") return "60m";
     if (v === "1d") return "1d";
-    if (v
+    if (v === "1wk") return "1wk";
+    if (v === "1mo") return "1mo";
+
+    return "1d";
+}
+
+/* ============================================================
+   FUNÇÃO PRINCIPAL (AVALIAR)
+============================================================ */
+async function avaliar(interno = false) {
+    const ativo = inputAtivo.value.trim();
+    const intervalo = getIntervalYahoo();
+    const resultadoDiv = document.getElementById("resultado");
+
+    if (!ativo) {
+        resultadoDiv.innerHTML = "<p style='color:red'>Escolha um ativo válido.</p>";
+        return;
+    }
+
+    if (!interno) {
+        if (intervaloAuto) clearInterval(intervaloAuto);
+        intervaloAuto = setInterval(() => avaliar(true), 60000);
+    }
+
+    resultadoDiv.innerHTML = "<p>Carregando dados...</p>";
+
+    try {
+        const respostaYahoo = await fetch(WORKER_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                type: "yahoo",
+                ticker: ativo,
+                interval: intervalo
+            })
+        });
+
+        const dadosYahoo = await respostaYahoo.json();
+
+        if (dadosYahoo.error) {
+            resultadoDiv.innerHTML = `<p style='color:red'>Erro: ${dadosYahoo
