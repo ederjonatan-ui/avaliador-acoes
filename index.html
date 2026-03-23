@@ -21,6 +21,7 @@
             <h2>Acesso Restrito</h2>
             <p>Digite a sequência correta</p>
             <div id="lock-display">••••</div>
+
             <div class="lock-grid">
                 <button onclick="pressKey(2)">2</button>
                 <button onclick="pressKey(1)">1</button>
@@ -34,11 +35,13 @@
                 <button onclick="pressKey(8)">8</button>
                 <button onclick="pressKey(5)">5</button>
             </div>
+
+            <button id="enter-btn" class="enter-btn" onclick="unlockSite()" disabled>ENTRAR</button>
             <div id="lock-error"></div>
         </div>
     </div>
 
-    <!-- CONTEÚDO PRINCIPAL (ESCONDIDO ATÉ DESBLOQUEAR) -->
+    <!-- CONTEÚDO PRINCIPAL -->
     <div class="container hidden" id="main-app">
 
         <h1>Avaliador de Ações – IA Híbrida</h1>
@@ -58,7 +61,6 @@
             <option value="1mo">Mensal</option>
         </select>
 
-        <!-- BOTÃO (OPCIONAL) -->
         <button onclick="avaliar()">Avaliar Ativo</button>
 
         <!-- GRÁFICO PRINCIPAL -->
@@ -67,35 +69,6 @@
             <canvas id="grafico" height="260"></canvas>
         </div>
 
-        <!-- GRÁFICO RSI -->
+        <!-- RSI -->
         <div class="card">
-            <h3>RSI</h3>
-            <canvas id="graficoRSI" height="120"></canvas>
-        </div>
-
-        <!-- GRÁFICO MACD -->
-        <div class="card">
-            <h3>MACD</h3>
-            <canvas id="graficoMACD" height="120"></canvas>
-        </div>
-
-        <!-- SLIDER PARA ESCOLHER O DIA -->
-        <div class="card">
-            <label>Escolher dia:</label>
-            <input type="range" id="sliderDia" min="0" max="0" value="0" oninput="mudarDia()">
-        </div>
-
-        <!-- PAINEL DE TENDÊNCIA -->
-        <div class="card" id="painel-tendencia">
-            <h3>Tendência em Tempo Real</h3>
-            <p id="tendencia-texto">Aguardando análise...</p>
-        </div>
-
-        <!-- RESULTADO COMPLETO -->
-        <div id="resultado"></div>
-
-    </div>
-
-    <script src="app.js"></script>
-</body>
-</html>
+            <h3>
