@@ -183,14 +183,12 @@ Recomendação: ${recomendacao}
 }
 
 // ======================================================
-// GRÁFICO AO VIVO (CANDLE + LINHA + FALLBACK)
+// GRÁFICO AO VIVO (CANDLE + LINHA + SLIDER + FALLBACK)
 // ======================================================
 let graficoAtual = null;
+let candlesGlobais = [];
 
 function plotarGrafico(chartData) {
-    const canvas = document.getElementById("grafico");
-    const ctx = canvas.getContext("2d");
-
     const timestamps = chartData.timestamp || [];
     const quote = chartData.indicators?.quote?.[0] || {};
     const opens = quote.open || [];
@@ -199,47 +197,42 @@ function plotarGrafico(chartData) {
     const closes = quote.close || [];
 
     // ================================
-    // FALLBACK: SE NÃO HÁ DADOS
+    // CRIAR CANDLES (COM FALLBACK)
     // ================================
-    if (timestamps.length === 0 || closes.length === 0) {
-        const agora = new Date();
-        const ultimoPreco = opens?.[0] || closes?.[0] || 0;
+    candlesGlobais = timestamps.map((t, i) => {
+        const close = closes[i];
 
-        if (graficoAtual) graficoAtual.destroy();
+        // Candle artificial se faltar OHLC
+        const open = opens[i] ?? close - 0.05;
+        const high = highs[i] ?? close + 0.10;
+        const low = lows[i] ?? close - 0.10;
 
-        graficoAtual = new Chart(ctx, {
-            type: "line",
-            data: {
-                labels: [agora],
-                datasets: [{
-                    label: "Último preço disponível",
-                    data: [ultimoPreco],
-                    borderColor: "#ffcc00",
-                    backgroundColor: "rgba(255,204,0,0.3)",
-                    borderWidth: 3,
-                    pointRadius: 6,
-                    tension: 0
-                }]
-            }
-        });
-
-        return;
-    }
+        return {
+            x: new Date(t * 1000),
+            o: open,
+            h: high,
+            l: low,
+            c: close
+        };
+    });
 
     // ================================
-    // PREPARAR DADOS PARA CANDLESTICK
+    // CONFIGURAR SLIDER
     // ================================
-    const candles = timestamps.map((t, i) => ({
-        x: new Date(t * 1000),
-        o: opens[i],
-        h: highs[i],
-        l: lows[i],
-        c: closes[i]
-    }));
+    const slider = document.getElementById("sliderDia");
+    slider.max = candlesGlobais.length - 1;
+    slider.value = candlesGlobais.length - 1;
 
     // ================================
-    // GRÁFICO COMBINADO (CANDLE + LINHA)
+    // DESENHAR GRÁFICO COMPLETO
     // ================================
+    desenharGrafico(candlesGlobais);
+}
+
+function desenharGrafico(candles) {
+    const canvas = document.getElementById("grafico");
+    const ctx = canvas.getContext("2d");
+
     if (graficoAtual) graficoAtual.destroy();
 
     graficoAtual = new Chart(ctx, {
@@ -276,6 +269,19 @@ function plotarGrafico(chartData) {
             }
         }
     });
+}
+
+// ======================================================
+// SLIDER PARA ESCOLHER O DIA
+// ======================================================
+function mudarDia() {
+    const slider = document.getElementById("sliderDia");
+    const index = parseInt(slider.value);
+
+    const candleSelecionado = candlesGlobais[index];
+
+    // Mostra apenas 1 candle (o do dia escolhido)
+    desenharGrafico([candleSelecionado]);
 }
 
 // ======================================================
