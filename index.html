@@ -5,17 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Avaliador de Ações – IA Híbrida</title>
 
-    <!-- Chart.js + Adapter + Candlestick Plugin -->
+    <!-- Chart.js + Adapter + Candlestick + Zoom -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
-    <!-- CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-    <div class="container">
+
+    <!-- TELA DE COFRE (SEQUÊNCIA 2207) -->
+    <div id="lock-screen">
+        <div class="lock-panel">
+            <h2>Acesso Restrito</h2>
+            <p>Digite a sequência correta</p>
+            <div id="lock-display">••••</div>
+            <div class="lock-grid">
+                <button onclick="pressKey(2)">2</button>
+                <button onclick="pressKey(1)">1</button>
+                <button onclick="pressKey(0)">0</button>
+
+                <button onclick="pressKey(3)">3</button>
+                <button onclick="pressKey(7)">7</button>
+                <button onclick="pressKey(4)">4</button>
+
+                <button onclick="pressKey(9)">9</button>
+                <button onclick="pressKey(8)">8</button>
+                <button onclick="pressKey(5)">5</button>
+            </div>
+            <div id="lock-error"></div>
+        </div>
+    </div>
+
+    <!-- CONTEÚDO PRINCIPAL (ESCONDIDO ATÉ DESBLOQUEAR) -->
+    <div class="container hidden" id="main-app">
 
         <h1>Avaliador de Ações – IA Híbrida</h1>
 
@@ -34,13 +58,25 @@
             <option value="1mo">Mensal</option>
         </select>
 
-        <!-- BOTÃO (AINDA EXISTE, MAS NÃO É MAIS NECESSÁRIO) -->
+        <!-- BOTÃO (OPCIONAL) -->
         <button onclick="avaliar()">Avaliar Ativo</button>
 
-        <!-- GRÁFICO -->
+        <!-- GRÁFICO PRINCIPAL -->
         <div class="card">
-            <h3>Gráfico</h3>
-            <canvas id="grafico" height="300"></canvas>
+            <h3>Gráfico de Preço</h3>
+            <canvas id="grafico" height="260"></canvas>
+        </div>
+
+        <!-- GRÁFICO RSI -->
+        <div class="card">
+            <h3>RSI</h3>
+            <canvas id="graficoRSI" height="120"></canvas>
+        </div>
+
+        <!-- GRÁFICO MACD -->
+        <div class="card">
+            <h3>MACD</h3>
+            <canvas id="graficoMACD" height="120"></canvas>
         </div>
 
         <!-- SLIDER PARA ESCOLHER O DIA -->
@@ -49,12 +85,17 @@
             <input type="range" id="sliderDia" min="0" max="0" value="0" oninput="mudarDia()">
         </div>
 
-        <!-- RESULTADO -->
+        <!-- PAINEL DE TENDÊNCIA -->
+        <div class="card" id="painel-tendencia">
+            <h3>Tendência em Tempo Real</h3>
+            <p id="tendencia-texto">Aguardando análise...</p>
+        </div>
+
+        <!-- RESULTADO COMPLETO -->
         <div id="resultado"></div>
 
     </div>
 
-    <!-- JAVASCRIPT -->
     <script src="app.js"></script>
 </body>
 </html>
