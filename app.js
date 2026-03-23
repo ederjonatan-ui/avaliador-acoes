@@ -15,16 +15,21 @@ function pressKey(num) {
     if (currentInput.length > 4) currentInput = [num];
 
     const display = document.getElementById("lock-display");
-    display.textContent = currentInput.map(() => "•").join("");
-
     const errorDiv = document.getElementById("lock-error");
+    const enterBtn = document.getElementById("enter-btn");
+
+    display.textContent = currentInput.map(() => "•").join("");
     errorDiv.textContent = "";
+    enterBtn.classList.remove("active");
+    enterBtn.disabled = true;
 
     if (currentInput.length === 4) {
         const ok = SEQUENCE.every((v, i) => v === currentInput[i]);
+
         if (ok) {
-            document.getElementById("lock-screen").style.display = "none";
-            document.getElementById("main-app").classList.remove("hidden");
+            display.textContent = "✔ Sequência correta";
+            enterBtn.classList.add("active");
+            enterBtn.disabled = false;
         } else {
             errorDiv.textContent = "Sequência incorreta";
             currentInput = [];
@@ -33,8 +38,13 @@ function pressKey(num) {
     }
 }
 
+function unlockSite() {
+    document.getElementById("lock-screen").style.display = "none";
+    document.getElementById("main-app").classList.remove("hidden");
+}
+
 // ======================================================
-// AUTOCOMPLETE AUTOMÁTICO
+// AUTOCOMPLETE
 // ======================================================
 inputAtivo.addEventListener("input", async () => {
     const texto = inputAtivo.value.trim();
@@ -60,14 +70,14 @@ inputAtivo.addEventListener("input", async () => {
         item.onclick = () => {
             inputAtivo.value = t;
             lista.innerHTML = "";
-            avaliar(); // inicia análise automática
+            avaliar();
         };
         lista.appendChild(item);
     });
 });
 
 // ======================================================
-// MAPEAR INTERVALOS PARA O PADRÃO DO YAHOO FINANCE
+// INTERVALO YAHOO
 // ======================================================
 function getIntervalYahoo() {
     const v = document.getElementById("intervalo").value;
@@ -82,7 +92,7 @@ function getIntervalYahoo() {
 }
 
 // ======================================================
-// FUNÇÃO PRINCIPAL (AVALIAR)
+// FUNÇÃO PRINCIPAL
 // ======================================================
 async function avaliar(interno = false) {
     const ativo = inputAtivo.value.trim();
@@ -96,9 +106,7 @@ async function avaliar(interno = false) {
 
     if (!interno) {
         if (intervaloAuto) clearInterval(intervaloAuto);
-        intervaloAuto = setInterval(() => {
-            avaliar(true);
-        }, 60000);
+        intervaloAuto = setInterval(() => avaliar(true), 60000);
     }
 
     resultadoDiv.innerHTML = "<p>Carregando dados...</p>";
@@ -127,15 +135,14 @@ async function avaliar(interno = false) {
             return;
         }
 
-        // GRÁFICOS
         const closes = chart.indicators.quote[0].close;
         const volumes = chart.indicators.quote[0].volume || [];
+
         plotarGrafico(chart, volumes);
         plotarRSI(chart);
         plotarMACD(chart);
 
         const precoAtual = closes[closes.length - 1];
-
         const mm20 = media(closes, 20);
         const mm50 = media(closes, 50);
         const volatilidade = desvioPadrao(closes);
@@ -172,9 +179,6 @@ Probabilidade local: ${(probLocal * 100).toFixed(0)}%.
         const recomendacao = probLocal > 0.65 ? "COMPRA" :
                              probLocal < 0.45 ? "VENDA" : "NEUTRO";
 
-        const risco = volatilidade > 2 ? "Alto" :
-                      volatilidade > 1 ? "Médio" : "Baixo";
-
         atualizarPainelTendencia(recomendacao, probLocal, rsi, volatilidade);
 
         resultadoDiv.innerHTML = `
@@ -203,28 +207,16 @@ probLocal: (probLocal * 100).toFixed(0) + "%"
 <div class="card highlight ${recomendacao === "COMPRA" ? "compra" : recomendacao === "VENDA" ? "venda" : ""}">
 Recomendação: ${recomendacao}
 </div>
-
-<div class="card">Preço ideal de compra: ${precoIdealCompra.toFixed(2)}</div>
-<div class="card">Preço ideal de venda: ${precoIdealVenda.toFixed(2)}</div>
-<div class="card">Preço alvo: ${precoAlvo.toFixed(2)}</div>
-<div class="card">Stop sugerido: ${stop.toFixed(2)}</div>
-<div class="card">Probabilidade final: ${(probLocal * 100).toFixed(0)}%</div>
-
-<div class="card">
-<h3>Risco</h3>
-<p>${risco}</p>
-<p>MM20 ${mm20 > mm50 ? "acima" : "abaixo"} da MM50.</p>
-<p>RSI: ${rsi.toFixed(2)}</p>
-<p>Volatilidade: ${volatilidade.toFixed(2)}</p>
-</div>
 `;
     } catch (erro) {
         resultadoDiv.innerHTML = `<p style='color:red'>Erro inesperado: ${erro.message}</p>`;
     }
 }
 
+/* ======= PARTE 2 ABAIXO ======= */
+
 // ======================================================
-// GRÁFICO PRINCIPAL (CANDLE + LINHA + MM + VOLUME + ZOOM)
+// GRÁFICO PRINCIPAL
 // ======================================================
 let graficoAtual = null;
 let graficoRSI = null;
@@ -239,28 +231,6 @@ function plotarGrafico(chartData, volumes) {
     const lows = quote.low || [];
     const closes = quote.close || [];
 
-    candlesGlobais = timestamps.map((t, i) => {
-        const close = closes[i];
-        const open = opens[i] ?? close - 0.05;
-        const high = highs[i] ?? close + 0.10;
-        const low = lows[i] ?? close - 0.10;
-
-        return {
-            x: new Date(t * 1000),
-            o: open,
-            h: high,
-            l: low,
-            c: close,
-            v: volumes[i] || 0
-        };
-    });
-
-    const slider = document.getElementById("sliderDia");
-    slider.max = candlesGlobais.length - 1;
-    slider.value = candlesGlobais.length - 1;
-
-    desenharGrafico(candlesGlobais);
-}
-
-function desenharGrafico(candles) {
-    const canvas = document
+    candlesGlobais = timestamps.map((t, i) => ({
+        x: new Date(t * 1000),
+        o: opens[i]
