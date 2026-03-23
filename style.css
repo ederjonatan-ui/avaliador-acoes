@@ -157,9 +157,11 @@ button:hover {
     border-radius: 6px;
     cursor: not-allowed;
     opacity: 0.5;
+    margin-top: 8px;
+    transition: 0.2s;
 }
 
-.enter-btn.active {
+.enter-btn.enabled {
     background: #238636;
     border-color: #2ea043;
     cursor: pointer;
