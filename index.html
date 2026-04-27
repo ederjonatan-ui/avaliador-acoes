@@ -1,163 +1,110 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Avaliador de Ações</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avaliador de Ações – IA Híbrida</title>
 
-<style>
-    body {
-        background: #000;
-        color: #fff;
-        font-family: Arial, sans-serif;
-        margin: 0;
-        padding: 20px;
-    }
+    <!-- Chart.js + Adapter + Candlestick + Zoom -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
-    .container {
-        max-width: 900px;
-        margin: auto;
-    }
-
-    input, button {
-        padding: 12px;
-        font-size: 18px;
-        border-radius: 8px;
-        border: none;
-    }
-
-    input {
-        width: 70%;
-        background: #111;
-        color: #fff;
-        border: 1px solid #333;
-    }
-
-    button {
-        background: #0f9d58;
-        color: #fff;
-        cursor: pointer;
-    }
-
-    .card {
-        background: #111;
-        padding: 20px;
-        border-radius: 12px;
-        margin-top: 20px;
-        border: 1px solid #222;
-    }
-
-    /* LISTAS DE COMPRAR / VENDER */
-    .listas-container {
-        display: flex;
-        gap: 20px;
-        margin-top: 30px;
-    }
-
-    .lista-card {
-        flex: 1;
-        background: #111;
-        padding: 20px;
-        border-radius: 12px;
-        border: 1px solid #222;
-    }
-
-    .lista-card h3 {
-        margin-bottom: 10px;
-        color: #0f9d58;
-    }
-
-    .lista-card ul {
-        list-style: none;
-        padding: 0;
-    }
-
-    .lista-card li {
-        padding: 8px 0;
-        border-bottom: 1px solid #222;
-    }
-</style>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-<div class="container">
 
-    <h1>Avaliador de Ações</h1>
+    <!-- TELA DE COFRE -->
+    <div id="lock-screen">
+        <div class="lock-panel glass">
+            <h2>Acesso Restrito</h2>
+            <p>Digite a sequência correta</p>
 
-    <input id="tickerInput" placeholder="Digite o ticker (ex: VALE3)">
-    <button onclick="buscarDados()">Avaliar</button>
+            <div id="lock-display">••••</div>
 
-    <div id="resultado" class="card"></div>
+            <div class="lock-grid">
+                <button onclick="pressKey(2)">2</button>
+                <button onclick="pressKey(1)">1</button>
+                <button onclick="pressKey(0)">0</button>
 
-    <!-- LISTAS AUTOMÁTICAS -->
-    <div class="listas-container">
-        <div class="lista-card">
-            <h3>📈 Empresas que Compensa Comprar</h3>
-            <ul id="listaComprar"></ul>
-        </div>
+                <button onclick="pressKey(3)">3</button>
+                <button onclick="pressKey(7)">7</button>
+                <button onclick="pressKey(4)">4</button>
 
-        <div class="lista-card">
-            <h3>📉 Empresas que Compensa Vender</h3>
-            <ul id="listaVender"></ul>
+                <button onclick="pressKey(9)">9</button>
+                <button onclick="pressKey(8)">8</button>
+                <button onclick="pressKey(5)">5</button>
+            </div>
+
+            <button id="enter-btn" class="enter-btn" onclick="unlockSite()">ENTRAR</button>
+
+            <div id="lock-error"></div>
         </div>
     </div>
 
-</div>
+    <!-- CONTEÚDO PRINCIPAL -->
+    <div class="container hidden" id="main-app">
 
-<script>
-async function buscarDados() {
-    const ticker = document.getElementById("tickerInput").value.trim().toUpperCase();
-    if (!ticker) return;
+        <h1 class="titulo-premium">Avaliador de Ações – IA Híbrida</h1>
 
-    document.getElementById("resultado").innerHTML = "Carregando...";
+        <div style="position: relative;">
+            <input id="ativo" type="text" placeholder="Digite o ativo...">
+            <div id="autocomplete-list" class="autocomplete-items"></div>
+        </div>
 
-    try {
-        const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=financialData,price,summaryDetail`;
-        const resposta = await fetch(url);
-        const json = await resposta.json();
+        <select id="intervalo" onchange="avaliar()">
+            <option value="1d">Diário</option>
+            <option value="1h">1 hora</option>
+            <option value="15m">15 minutos</option>
+            <option value="1wk">Semanal</option>
+            <option value="1mo">Mensal</option>
+        </select>
 
-        const price = json.quoteSummary.result[0].price;
-        const financial = json.quoteSummary.result[0].financialData;
+        <button onclick="avaliar()">Avaliar Ativo</button>
 
-        const nome = price.longName || ticker;
-        const atual = price.regularMarketPrice.raw;
-        const alvo = financial.targetMeanPrice.raw;
+        <div class="card glass">
+            <h3>Gráfico de Preço</h3>
+            <canvas id="grafico" height="260"></canvas>
+        </div>
 
-        let recomendacao = "Neutro";
-        if (alvo > atual * 1.10) recomendacao = "Comprar";
-        if (alvo < atual * 0.90) recomendacao = "Vender";
+        <div class="card glass">
+            <h3>RSI</h3>
+            <canvas id="graficoRSI" height="120"></canvas>
+        </div>
 
-        document.getElementById("resultado").innerHTML = `
-            <h2>${nome} (${ticker})</h2>
-            <p>Preço atual: R$ ${atual}</p>
-            <p>Preço alvo: R$ ${alvo}</p>
-            <p><strong>Recomendação: ${recomendacao}</strong></p>
-        `;
+        <div class="card glass">
+            <h3>MACD</h3>
+            <canvas id="graficoMACD" height="120"></canvas>
+        </div>
 
-        atualizarListas(ticker, nome, recomendacao);
+        <div class="card glass">
+            <label>Escolher dia:</label>
+            <input type="range" id="sliderDia" min="0" max="0" value="0" oninput="mudarDia()">
+        </div>
 
-    } catch (e) {
-        document.getElementById("resultado").innerHTML = "Erro ao buscar dados.";
-    }
-}
+        <div class="card glass" id="painel-tendencia">
+            <h3>Tendência em Tempo Real</h3>
+            <p id="tendencia-texto">Aguardando análise...</p>
+        </div>
 
-/* LISTAS AUTOMÁTICAS */
-const listaComprar = document.getElementById("listaComprar");
-const listaVender = document.getElementById("listaVender");
+        <div id="resultado" class="glass card"></div>
 
-function atualizarListas(ticker, nomeEmpresa, recomendacao) {
-    const li = document.createElement("li");
-    li.textContent = `${nomeEmpresa} (${ticker})`;
+        <!-- LISTAS AUTOMÁTICAS -->
+        <div class="listas-container glass card">
+            <div class="lista-card">
+                <h3>📈 Empresas que Compensa Comprar</h3>
+                <ul id="listaComprar"></ul>
+            </div>
 
-    if (recomendacao.includes("Comprar")) {
-        listaComprar.appendChild(li);
-    }
+            <div class="lista-card">
+                <h3>📉 Empresas que Compensa Vender</h3>
+                <ul id="listaVender"></ul>
+            </div>
+        </div>
 
-    if (recomendacao.includes("Vender")) {
-        listaVender.appendChild(li);
-    }
-}
-</script>
+    </div>
 
+    <script src="app.js"></script>
 </body>
 </html>
