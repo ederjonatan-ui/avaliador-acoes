@@ -2,7 +2,7 @@
    SISTEMA DE COFRE
 ========================== */
 
-let senha = "2174";
+let senha = "2207";
 let entrada = "";
 
 function pressKey(num) {
