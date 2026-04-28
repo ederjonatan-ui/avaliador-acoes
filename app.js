@@ -1,311 +1,530 @@
-// =========================
-// AUTOCOMPLETE
-// =========================
-async function buscarSugestoes(query) {
-    if (!query) return [];
+/* ============================================================
+   CONFIGURAÇÃO
+============================================================ */
+const WORKER_URL = "https://throbbing-violet-ec59.ederjonatan.workers.dev";
 
-    const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=5&newsCount=0`;
+const inputAtivo = document.getElementById("ativo");
+const lista = document.getElementById("autocomplete-list");
+let intervaloAuto = null;
 
-    try {
-        const resposta = await fetch(url);
-        const dados = await resposta.json();
-        return dados.quotes || [];
-    } catch (e) {
-        console.error("Erro no autocomplete:", e);
-        return [];
-    }
-}
-
-document.getElementById("ativo").addEventListener("input", async function () {
-    const texto = this.value.trim();
-    const lista = document.getElementById("autocomplete-list");
-    lista.innerHTML = "";
-
-    if (!texto) return;
-
-    const sugestoes = await buscarSugestoes(texto);
-
-    sugestoes.forEach(item => {
-        const div = document.createElement("div");
-        div.classList.add("autocomplete-item");
-        div.innerHTML = `${item.shortname || item.longname || item.symbol} (${item.symbol})`;
-        div.onclick = () => {
-            document.getElementById("ativo").value = item.symbol;
-            lista.innerHTML = "";
-        };
-        lista.appendChild(div);
-    });
-});
-
-// =========================
-// GRÁFICOS (básico, mantém seu layout)
-// =========================
-let grafico, graficoRSI, graficoMACD;
-
-function criarGrafico(ctx, tipo, dados, opcoes) {
-    if (tipo === "candlestick") {
-        return new Chart(ctx, {
-            type: "candlestick",
-            data: { datasets: [{ label: "Preço", data: dados }] },
-            options: opcoes
-        });
-    } else {
-        return new Chart(ctx, {
-            type: "line",
-            data: { labels: dados.labels, datasets: dados.datasets },
-            options: opcoes
-        });
-    }
-}
-
-async function carregarGraficos(ticker, intervalo) {
-    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${intervalo}&range=6mo`;
-
-    try {
-        const resposta = await fetch(url);
-        const dados = await resposta.json();
-
-        const result = dados.chart.result[0];
-        const timestamps = result.timestamp;
-        const candles = result.indicators.quote[0];
-
-        const dadosCandle = timestamps.map((t, i) => ({
-            x: t * 1000,
-            o: candles.open[i],
-            h: candles.high[i],
-            l: candles.low[i],
-            c: candles.close[i]
-        }));
-
-        if (grafico) grafico.destroy();
-        grafico = criarGrafico(
-            document.getElementById("grafico"),
-            "candlestick",
-            dadosCandle,
-            { responsive: true }
-        );
-
-        // Aqui você pode carregar RSI/MACD se quiser, mantendo sua lógica anterior
-
-    } catch (e) {
-        console.error("Erro ao carregar gráficos:", e);
-    }
-}
-
-// =========================
-// LÓGICA DE VALOR SUGERIDO
-// =========================
-function calcularValorSugerido(recomendacao, atual, alvo, fechamento) {
-    let valor = atual;
-
-    if (recomendacao === "Comprar") {
-        const diferenca = alvo - atual;
-        valor = atual - diferenca * 0.25;
-    } else if (recomendacao === "Vender") {
-        const variacao = atual - fechamento;
-        valor = atual + variacao * 0.30;
-    }
-
-    return Number(valor.toFixed(2));
-}
-
-// =========================
-// AVALIAÇÃO DO ATIVO
-// =========================
-async function avaliar() {
-    const ticker = document.getElementById("ativo").value.trim().toUpperCase();
-    const intervalo = document.getElementById("intervalo").value;
-
-    if (!ticker) {
-        alert("Digite um ativo válido.");
-        return;
-    }
-
-    try {
-        const url = `https://query2.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=price,financialData`;
-        const resposta = await fetch(url);
-        const dados = await resposta.json();
-
-        if (!dados.quoteSummary || !dados.quoteSummary.result) {
-            alert("Ativo não encontrado.");
-            return;
-        }
-
-        const price = dados.quoteSummary.result[0].price;
-        const financial = dados.quoteSummary.result[0].financialData;
-
-        const nome = price.longName || ticker;
-        const atual = price.regularMarketPrice.raw;
-        const fechamento = price.regularMarketPreviousClose.raw;
-        const alvo = financial.targetMeanPrice.raw;
-
-        let recomendacao = "Neutro";
-        if (alvo > atual * 1.10) recomendacao = "Comprar";
-        if (alvo < atual * 0.90) recomendacao = "Vender";
-
-        const valorSugerido = calcularValorSugerido(recomendacao, atual, alvo, fechamento);
-        const tipoSugestao = recomendacao === "Comprar" ? "Compra" :
-                             recomendacao === "Vender" ? "Venda" : "Neutro";
-
-        document.getElementById("resultado").innerHTML = `
-            <div class="card">
-                <h2>${nome} (${ticker})</h2>
-                <p>Último fechamento: R$ ${fechamento.toFixed(2)}</p>
-                <p>Preço atual: R$ ${atual.toFixed(2)}</p>
-                <p>Preço alvo: R$ ${alvo.toFixed(2)}</p>
-                <p><strong>Recomendação: ${recomendacao}</strong></p>
-                <p><strong>Valor sugerido de ${tipoSugestao}: R$ ${valorSugerido.toFixed(2)}</strong></p>
-            </div>
-        `;
-
-        atualizarListas(ticker, nome, recomendacao, valorSugerido, tipoSugestao, atual, alvo, fechamento);
-
-        carregarGraficos(ticker, intervalo);
-
-    } catch (e) {
-        console.error("Erro ao avaliar ativo:", e);
-        alert("Erro ao buscar dados.");
-    }
-}
-
-// =========================
-// LISTAS + TIMERS
-// =========================
-let timers = {};
-
-function formatarTempo(segundos) {
-    const m = String(Math.floor(segundos / 60)).padStart(2, "0");
-    const s = String(segundos % 60).padStart(2, "0");
-    return `${m}:${s}`;
-}
-
-function iniciarTimer(ticker) {
-    const dados = timers[ticker];
-    if (!dados) return;
-
-    let tempo = 30;
-    if (dados.recomendacao === "Comprar") tempo = 45;
-    if (dados.recomendacao === "Vender") tempo = 20;
-
-    if (dados.interval) clearInterval(dados.interval);
-
-    const elemento = document.getElementById(`timer-${ticker}`);
-    dados.tempo = tempo;
-
-    dados.interval = setInterval(() => {
-        dados.tempo--;
-
-        if (elemento) {
-            elemento.textContent = formatarTempo(dados.tempo);
-        }
-
-        if (dados.tempo <= 0) {
-            clearInterval(dados.interval);
-            moverParaListaOposta(ticker);
-        }
-    }, 1000);
-}
-
-function atualizarListas(ticker, nome, recomendacao, valorSugerido, tipoSugestao, atual, alvo, fechamento) {
-    const listaComprar = document.getElementById("lista-comprar");
-    const listaVender = document.getElementById("lista-vender");
-
-    if (!listaComprar || !listaVender) return;
-
-    const existente = document.querySelector(`li[data-ticker="${ticker}"]`);
-    if (existente) existente.remove();
-
-    const item = document.createElement("li");
-    item.setAttribute("data-ticker", ticker);
-    item.setAttribute("data-nome", nome);
-
-    item.innerHTML = `
-        <span>
-            ${nome} (${ticker})<br>
-            <small>Valor sugerido de ${tipoSugestao}: R$ ${valorSugerido.toFixed(2)}</small>
-        </span>
-        <span id="timer-${ticker}" class="timer-tag"></span>
-    `;
-
-    if (recomendacao === "Comprar") {
-        listaComprar.appendChild(item);
-    } else if (recomendacao === "Vender") {
-        listaVender.appendChild(item);
-    }
-
-    timers[ticker] = {
-        recomendacao,
-        valorSugerido,
-        tipoSugestao,
-        atual,
-        alvo,
-        fechamento,
-        elementoId: `timer-${ticker}`,
-        interval: null,
-        tempo: 0
-    };
-
-    iniciarTimer(ticker);
-}
-
-function moverParaListaOposta(ticker) {
-    const dados = timers[ticker];
-    if (!dados) return;
-
-    const item = document.querySelector(`li[data-ticker="${ticker}"]`);
-    if (!item) return;
-
-    const nome = item.getAttribute("data-nome");
-    const recomendacaoAtual = dados.recomendacao;
-
-    item.remove();
-
-    const novaRecomendacao = recomendacaoAtual === "Comprar" ? "Vender" : "Comprar";
-    const novoValorSugerido = calcularValorSugerido(
-        novaRecomendacao,
-        dados.atual,
-        dados.alvo,
-        dados.fechamento
-    );
-    const novoTipo = novaRecomendacao === "Comprar" ? "Compra" : "Venda";
-
-    atualizarListas(
-        ticker,
-        nome,
-        novaRecomendacao,
-        novoValorSugerido,
-        novoTipo,
-        dados.atual,
-        dados.alvo,
-        dados.fechamento
-    );
-}
-
-// =========================
-// COFRE
-// =========================
-let senha = "2207"; // ajuste se quiser
-let entrada = "";
+/* ============================================================
+   COFRE 2207 + BOTÃO ENTRAR
+============================================================ */
+const SEQUENCE = [2, 2, 0, 7];
+let currentInput = [];
+let canEnter = false;
 
 function pressKey(num) {
-    if (entrada.length < senha.length) {
-        entrada += num;
-        document.getElementById("lock-display").textContent = "•".repeat(entrada.length);
+    currentInput.push(num);
+    if (currentInput.length > 4) currentInput = [num];
+
+    const display = document.getElementById("lock-display");
+    const errorDiv = document.getElementById("lock-error");
+    const enterBtn = document.getElementById("enter-btn");
+
+    display.textContent = currentInput.map(() => "•").join("");
+    errorDiv.textContent = "";
+    canEnter = false;
+    enterBtn.classList.remove("enabled");
+
+    if (currentInput.length === 4) {
+        const ok = SEQUENCE.every((v, i) => v === currentInput[i]);
+
+        if (ok) {
+            display.textContent = "Sequência correta";
+            canEnter = true;
+            enterBtn.classList.add("enabled");
+        } else {
+            errorDiv.textContent = "Sequência incorreta";
+            currentInput = [];
+            display.textContent = "••••";
+        }
     }
 }
 
 function unlockSite() {
-    if (entrada === senha) {
-        document.getElementById("lock-screen").style.display = "none";
-        document.getElementById("main-app").classList.remove("hidden");
-    } else {
-        document.getElementById("lock-error").textContent = "Senha incorreta!";
-        entrada = "";
-        document.getElementById("lock-display").textContent = "••••";
+    if (!canEnter) return;
+
+    document.getElementById("lock-screen").style.display = "none";
+    document.getElementById("main-app").classList.remove("hidden");
+}
+
+/* ============================================================
+   AUTOCOMPLETE
+============================================================ */
+inputAtivo.addEventListener("input", async () => {
+    const texto = inputAtivo.value.trim();
+
+    if (texto.length < 2) {
+        lista.innerHTML = "";
+        return;
+    }
+
+    const r = await fetch(WORKER_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type: "searchTicker", query: texto })
+    });
+
+    const tickers = await r.json();
+
+    lista.innerHTML = "";
+
+    tickers.slice(0, 10).forEach(t => {
+        const item = document.createElement("div");
+        item.textContent = t;
+        item.onclick = () => {
+            inputAtivo.value = t;
+            lista.innerHTML = "";
+            avaliar();
+        };
+        lista.appendChild(item);
+    });
+});
+
+/* ============================================================
+   INTERVALO YAHOO
+============================================================ */
+function getIntervalYahoo() {
+    const v = document.getElementById("intervalo").value;
+
+    if (v === "15m") return "15m";
+    if (v === "1h") return "60m";
+    if (v === "1d") return "1d";
+    if (v === "1wk") return "1wk";
+    if (v === "1mo") return "1mo";
+
+    return "1d";
+}
+
+/* ============================================================
+   FUNÇÃO PRINCIPAL (AVALIAR)
+============================================================ */
+async function avaliar(interno = false) {
+    const ativo = inputAtivo.value.trim();
+    const intervalo = getIntervalYahoo();
+    const resultadoDiv = document.getElementById("resultado");
+
+    if (!ativo) {
+        resultadoDiv.innerHTML = "<p style='color:red'>Escolha um ativo válido.</p>";
+        return;
+    }
+
+    if (!interno) {
+        if (intervaloAuto) clearInterval(intervaloAuto);
+        intervaloAuto = setInterval(() => avaliar(true), 60000);
+    }
+
+    resultadoDiv.innerHTML = "<p>Carregando dados...</p>";
+
+    try {
+        const respostaYahoo = await fetch(WORKER_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                type: "yahoo",
+                ticker: ativo,
+                interval: intervalo
+            })
+        });
+
+        const dadosYahoo = await respostaYahoo.json();
+
+        if (dadosYahoo.error) {
+            resultadoDiv.innerHTML = `<p style='color:red'>Erro: ${dadosYahoo.error}</p>`;
+            return;
+        }
+
+        const chart = dadosYahoo.chart?.result?.[0];
+        if (!chart) {
+            resultadoDiv.innerHTML = "<p style='color:red'>Ativo não encontrado.</p>";
+            return;
+        }
+
+        const closes = chart.indicators.quote[0].close;
+        const volumes = chart.indicators.quote[0].volume || [];
+
+        plotarGrafico(chart, volumes);
+        plotarRSI(chart);
+        plotarMACD(chart);
+
+        const precoAtual = closes[closes.length - 1];
+        const mm20 = media(closes, 20);
+        const mm50 = media(closes, 50);
+        const volatilidade = desvioPadrao(closes);
+        const rsi = calcularRSI(closes);
+        const macd = calcularMACD(closes);
+
+        const precoIdealCompra = precoAtual * 0.985;
+        const precoIdealVenda = precoAtual * 1.012;
+        const precoAlvo = precoAtual * 1.022;
+        const stop = precoAtual * 0.99;
+
+        const probLocal = calcularProbabilidade(mm20, mm50, rsi, macd);
+
+        const prompt = `
+Analise o ativo ${ativo}.
+Preço atual: ${precoAtual.toFixed(2)}.
+MM20: ${mm20.toFixed(2)}.
+MM50: ${mm50.toFixed(2)}.
+RSI: ${rsi.toFixed(2)}.
+MACD: ${macd.toFixed(2)}.
+Volatilidade: ${volatilidade.toFixed(2)}.
+Probabilidade local: ${(probLocal * 100).toFixed(0)}%.
+        `;
+
+        const respostaIA = await fetch(WORKER_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt })
+        });
+
+        const dadosIA = await respostaIA.json();
+        const textoIA = extrairTextoIA(dadosIA);
+
+        const recomendacao = probLocal > 0.65 ? "COMPRA" :
+                             probLocal < 0.45 ? "VENDA" : "NEUTRO";
+
+        atualizarPainelTendencia(recomendacao, probLocal, rsi, volatilidade);
+
+        resultadoDiv.innerHTML = `
+<div class="card">
+<h3>Análise Local</h3>
+<pre>${JSON.stringify({
+precoAtual: precoAtual.toFixed(2),
+mm20: mm20.toFixed(2),
+mm50: mm50.toFixed(2),
+volatilidade: volatilidade.toFixed(2),
+precoIdealCompra: precoIdealCompra.toFixed(2),
+precoIdealVenda: precoIdealVenda.toFixed(2),
+precoAlvo: precoAlvo.toFixed(2),
+stop: stop.toFixed(2),
+rsi: rsi.toFixed(2),
+macd: macd.toFixed(2),
+probLocal: (probLocal * 100).toFixed(0) + "%"
+}, null, 2)}</pre>
+</div>
+
+<div class="card">
+<h3>Análise IA Externa</h3>
+<p>${textoIA}</p>
+</div>
+
+<div class="card highlight ${recomendacao === "COMPRA" ? "compra" : recomendacao === "VENDA" ? "venda" : ""}">
+Recomendação: ${recomendacao}
+</div>
+`;
+    } catch (erro) {
+        resultadoDiv.innerHTML = `<p style='color:red'>Erro inesperado: ${erro.message}</p>`;
     }
 }
 
-// Placeholder para sliderDia, se você já tinha lógica:
+/* ============================================================
+   GRÁFICO PRINCIPAL
+============================================================ */
+let graficoAtual = null;
+let graficoRSI = null;
+let graficoMACD = null;
+let candlesGlobais = [];
+
+function plotarGrafico(chartData, volumes) {
+    const timestamps = chartData.timestamp || [];
+    const quote = chartData.indicators?.quote?.[0] || {};
+    const opens = quote.open || [];
+    const highs = quote.high || [];
+    const lows = quote.low || [];
+    const closes = quote.close || [];
+
+    candlesGlobais = timestamps.map((t, i) => ({
+        x: new Date(t * 1000),
+        o: opens[i] ?? closes[i] - 0.05,
+        h: highs[i] ?? closes[i] + 0.10,
+        l: lows[i] ?? closes[i] - 0.10,
+        c: closes[i],
+        v: volumes[i] || 0
+    }));
+
+    const slider = document.getElementById("sliderDia");
+    slider.max = candlesGlobais.length - 1;
+    slider.value = candlesGlobais.length - 1;
+
+    desenharGrafico(candlesGlobais);
+}
+
+function desenharGrafico(candles) {
+    const canvas = document.getElementById("grafico");
+    const ctx = canvas.getContext("2d");
+
+    if (graficoAtual) graficoAtual.destroy();
+
+    const closeLine = candles.map(c => ({ x: c.x, y: c.c }));
+    const mm20Line = calcularSerieMM(candles.map(c => c.c), 20, candles.map(c => c.x));
+    const mm50Line = calcularSerieMM(candles.map(c => c.c), 50, candles.map(c => c.x));
+    const volumeBars = candles.map(c => ({ x: c.x, y: c.v }));
+
+    graficoAtual = new Chart(ctx, {
+        data: {
+            datasets: [
+                {
+                    type: "candlestick",
+                    label: "Candles",
+                    data: candles,
+                    borderColor: "#fff",
+                    color: {
+                        up: "#2ea043",
+                        down: "#f85149",
+                        unchanged: "#999"
+                    }
+                },
+                {
+                    type: "line",
+                    label: "Fechamento",
+                    data: closeLine,
+                    borderColor: "#58a6ff",
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.2
+                },
+                {
+                    type: "line",
+                    label: "MM20",
+                    data: mm20Line,
+                    borderColor: "#facc15",
+                    borderWidth: 1.2,
+                    pointRadius: 0,
+                    tension: 0.2
+                },
+                {
+                    type: "line",
+                    label: "MM50",
+                    data: mm50Line,
+                    borderColor: "#22d3ee",
+                    borderWidth: 1.2,
+                    pointRadius: 0,
+                    tension: 0.2
+                },
+                {
+                    type: "bar",
+                    label: "Volume",
+                    data: volumeBars,
+                    backgroundColor: "rgba(148,163,184,0.5)",
+                    borderWidth: 0,
+                    yAxisID: "y1"
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { type: "time" },
+                y: { beginAtZero: false },
+                y1: {
+                    beginAtZero: true,
+                    position: "right",
+                    grid: { drawOnChartArea: false }
+                }
+            },
+            plugins: {
+                zoom: {
+                    pan: { enabled: true, mode: "x" },
+                    zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: "x" }
+                }
+            }
+        }
+    });
+}
+
+/* ============================================================
+   RSI
+============================================================ */
+function plotarRSI(chartData) {
+    const timestamps = chartData.timestamp || [];
+    const closes = chartData.indicators.quote[0].close || [];
+
+    const rsiSerie = calcularSerieRSI(closes, 14, timestamps);
+
+    const canvas = document.getElementById("graficoRSI");
+    const ctx = canvas.getContext("2d");
+
+    if (graficoRSI) graficoRSI.destroy();
+
+    graficoRSI = new Chart(ctx, {
+        type: "line",
+        data: {
+            datasets: [
+                {
+                    label: "RSI",
+                    data: rsiSerie,
+                    borderColor: "#f97316",
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { type: "time" },
+                y: { min: 0, max: 100 }
+            }
+        }
+    });
+}
+
+/* ============================================================
+   MACD
+============================================================ */
+function plotarMACD(chartData) {
+    const timestamps = chartData.timestamp || [];
+    const closes = chartData.indicators.quote[0].close || [];
+
+    const macdSerie = calcularSerieMACD(closes, timestamps);
+
+    const canvas = document.getElementById("graficoMACD");
+    const ctx = canvas.getContext("2d");
+
+    if (graficoMACD) graficoMACD.destroy();
+
+    graficoMACD = new Chart(ctx, {
+        type: "line",
+        data: {
+            datasets: [
+                {
+                    label: "MACD",
+                    data: macdSerie,
+                    borderColor: "#22c55e",
+                    borderWidth: 1.5,
+                    pointRadius: 0,
+                    tension: 0.2
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                x: { type: "time" },
+                y: { beginAtZero: false }
+            }
+        }
+    });
+}
+
+/* ============================================================
+   SLIDER
+============================================================ */
 function mudarDia() {
-    // implemente aqui se já usava
+    const slider = document.getElementById("sliderDia");
+    const index = parseInt(slider.value);
+
+    const candleSelecionado = candlesGlobais[index];
+    if (!candleSelecionado) return;
+
+    desenharGrafico([candleSelecionado]);
+}
+
+/* ============================================================
+   PAINEL DE TENDÊNCIA
+============================================================ */
+function atualizarPainelTendencia(recomendacao, probLocal, rsi, volatilidade) {
+    const painel = document.getElementById("painel-tendencia");
+    const texto = document.getElementById("tendencia-texto");
+
+    painel.classList.remove("alta", "baixa", "neutro");
+
+    let classe = "neutro";
+    let desc = `Probabilidade: ${(probLocal * 100).toFixed(0)}% | RSI: ${rsi.toFixed(1)} | Vol: ${volatilidade.toFixed(2)}`;
+
+    if (recomendacao === "COMPRA") {
+        classe = "alta";
+        desc = "Tendência de alta. " + desc;
+    } else if (recomendacao === "VENDA") {
+        classe = "baixa";
+        desc = "Tendência de baixa. " + desc;
+    }
+
+    painel.classList.add(classe);
+    texto.textContent = desc;
+}
+
+/* ============================================================
+   FUNÇÕES AUXILIARES
+============================================================ */
+function media(arr, n) {
+    if (arr.length < n) return arr[arr.length - 1];
+    const slice = arr.slice(arr.length - n);
+    return slice.reduce((a, b) => a + b, 0) / slice.length;
+}
+
+function desvioPadrao(arr) {
+    const m = media(arr, arr.length);
+    const variancia = arr.reduce((acc, v) => acc + Math.pow(v - m, 2), 0) / arr.length;
+    return Math.sqrt(variancia);
+}
+
+function calcularRSI(closes) {
+    let ganhos = 0, perdas = 0;
+    for (let i = 1; i < closes.length; i++) {
+        const diff = closes[i] - closes[i - 1];
+        if (diff > 0) ganhos += diff;
+        else perdas -= diff;
+    }
+    const rs = ganhos / (perdas || 1);
+    return 100 - (100 / (1 + rs));
+}
+
+function calcularMACD(closes) {
+    return media(closes, 12) - media(closes, 26);
+}
+
+function calcularProbabilidade(mm20, mm50, rsi, macd) {
+    let score = 0;
+    if (mm20 > mm50) score += 0.3;
+    if (rsi < 70 && rsi > 30) score += 0.2;
+    if (macd > 0) score += 0.3;
+    return Math.min(1, score + 0.2);
+}
+
+function extrairTextoIA(dados) {
+    if (Array.isArray(dados) && dados[0]?.generated_text) {
+        return dados[0].generated_text;
+    }
+    if (dados.generated_text) {
+        return dados.generated_text;
+    }
+    if (dados.error) {
+        return "Erro da IA: " + dados.error;
+    }
+    return JSON.stringify(dados);
+}
+
+function calcularSerieMM(closes, n, xs) {
+    const out = [];
+    for (let i = 0; i < closes.length; i++) {
+        if (i < n - 1) continue;
+        const slice = closes.slice(i - n + 1, i + 1);
+        const m = slice.reduce((a, b) => a + b, 0) / slice.length;
+        out.push({ x: xs[i], y: m });
+    }
+    return out;
+}
+
+function calcularSerieRSI(closes, n, timestamps) {
+    const out = [];
+    for (let i = n; i < closes.length; i++) {
+        const slice = closes.slice(i - n, i + 1);
+        const rsi = calcularRSI(slice);
+        out.push({ x: new Date(timestamps[i] * 1000), y: rsi });
+    }
+    return out;
+}
+
+function calcularSerieMACD(closes, timestamps) {
+    const out = [];
+    for (let i = 26; i < closes.length; i++) {
+        const slice = closes.slice(0, i + 1);
+        const macd = calcularMACD(slice);
+        out.push({ x: new Date(timestamps[i] * 1000), y: macd });
+    }
+    return out;
 }
