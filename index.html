@@ -43,3 +43,55 @@
         </div>
     </div>
 
+    <!-- CONTEÚDO PRINCIPAL -->
+    <div class="container hidden" id="main-app">
+
+        <h1>Avaliador de Ações – IA Híbrida</h1>
+
+        <div style="position: relative;">
+            <input id="ativo" type="text" placeholder="Digite o ativo...">
+            <div id="autocomplete-list" class="autocomplete-items"></div>
+        </div>
+
+        <select id="intervalo" onchange="avaliar()">
+            <option value="1d">Diário</option>
+            <option value="1h">1 hora</option>
+            <option value="15m">15 minutos</option>
+            <option value="1wk">Semanal</option>
+            <option value="1mo">Mensal</option>
+        </select>
+
+        <button onclick="avaliar()">Avaliar Ativo</button>
+
+        <div class="card">
+            <h3>Gráfico de Preço</h3>
+            <canvas id="grafico" height="260"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>RSI</h3>
+            <canvas id="graficoRSI" height="120"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>MACD</h3>
+            <canvas id="graficoMACD" height="120"></canvas>
+        </div>
+
+        <div class="card">
+            <label>Escolher dia:</label>
+            <input type="range" id="sliderDia" min="0" max="0" value="0" oninput="mudarDia()">
+        </div>
+
+        <div class="card" id="painel-tendencia">
+            <h3>Tendência em Tempo Real</h3>
+            <p id="tendencia-texto">Aguardando análise...</p>
+        </div>
+
+        <div id="resultado"></div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
