@@ -698,98 +698,94 @@
     setInterval(tickTimers, 1000);
 
     function renderLists() {
-      const buyListEl = document.getElementById("buy-list");
-      const sellListEl = document.getElementById("sell-list");
+  const buyListEl = document.getElementById("buy-list");
+  const sellListEl = document.getElementById("sell-list");
 
-      buyListEl.innerHTML = "";
-      sellListEl.innerHTML = "";
+  buyListEl.innerHTML = "";
+  sellListEl.innerHTML = "";
 
-      if (buyCompanies.length === 0) {
-        const div = document.createElement("div");
-        div.className = "empty-list";
-        div.textContent = "Nenhuma empresa em ponto ideal de compra no momento.";
-        buyListEl.appendChild(div);
-      } else {
-        buyCompanies.forEach((c) => {
-          const row = document.createElement("div");
-          row.className = "company-row";
+  function createRow(company, tipo) {
+    const row = document.createElement("div");
+    row.className = "company-row";
 
-          const main = document.createElement("div");
-          main.className = "company-main";
+    const main = document.createElement("div");
+    main.className = "company-main";
 
-          const name = document.createElement("div");
-          name.className = "company-name";
-          name.textContent = c.name;
+    const name = document.createElement("div");
+    name.className = "company-name";
+    name.textContent = company.name;
 
-          const ticker = document.createElement("div");
-          ticker.className = "company-ticker";
-          ticker.textContent = c.ticker.toUpperCase();
+    const ticker = document.createElement("div");
+    ticker.className = "company-ticker";
+    ticker.textContent = company.ticker.toUpperCase();
 
-          main.appendChild(name);
-          main.appendChild(ticker);
+    const valor = document.createElement("div");
+    valor.className = "company-valor";
+    valor.style.fontSize = "11px";
+    valor.style.color = "#7fffe0";
 
-          const timerBox = document.createElement("div");
-          const timerLabel = document.createElement("div");
-          timerLabel.className = "company-timer-label";
-          timerLabel.textContent = "Tempo p/ mudar p/ venda";
+    const ganho = document.createElement("div");
+    ganho.className = "company-ganho";
+    ganho.style.fontSize = "11px";
+    ganho.style.color = company.potencialGanho >= 0 ? "#00d68f" : "#ff4b6e";
 
-          const timer = document.createElement("div");
-          timer.className = "company-timer";
-          timer.textContent = formatSeconds(c.secondsRemaining);
-
-          timerBox.appendChild(timerLabel);
-          timerBox.appendChild(timer);
-
-          row.appendChild(main);
-          row.appendChild(timerBox);
-
-          buyListEl.appendChild(row);
-        });
-      }
-
-      if (sellCompanies.length === 0) {
-        const div = document.createElement("div");
-        div.className = "empty-list";
-        div.textContent = "Nenhuma empresa em ponto crítico de venda no momento.";
-        sellListEl.appendChild(div);
-      } else {
-        sellCompanies.forEach((c) => {
-          const row = document.createElement("div");
-          row.className = "company-row";
-
-          const main = document.createElement("div");
-          main.className = "company-main";
-
-          const name = document.createElement("div");
-          name.className = "company-name";
-          name.textContent = c.name;
-
-          const ticker = document.createElement("div");
-          ticker.className = "company-ticker";
-          ticker.textContent = c.ticker.toUpperCase();
-
-          main.appendChild(name);
-          main.appendChild(ticker);
-
-          const timerBox = document.createElement("div");
-          const timerLabel = document.createElement("div");
-          timerLabel.className = "company-timer-label";
-          timerLabel.textContent = "Tempo p/ mudar p/ compra";
-
-          const timer = document.createElement("div");
-          timer.className = "company-timer";
-          timer.textContent = formatSeconds(c.secondsRemaining);
-
-          timerBox.appendChild(timerLabel);
-          timerBox.appendChild(timer);
-
-          row.appendChild(main);
-          row.appendChild(timerBox);
-
-          sellListEl.appendChild(row);
-        });
-      }
+    if (tipo === "COMPRA") {
+      valor.textContent = "Valor ideal: R$ " + company.valorSugerido.toFixed(2);
+      ganho.textContent = "Potencial: +" + company.potencialGanho.toFixed(2) + "%";
+    } else {
+      valor.textContent = "Valor alvo: R$ " + company.valorSugerido.toFixed(2);
+      ganho.textContent = "Risco/Retorno: " + company.potencialGanho.toFixed(2) + "%";
     }
+
+    main.appendChild(name);
+    main.appendChild(ticker);
+    main.appendChild(valor);
+    main.appendChild(ganho);
+
+    const timerBox = document.createElement("div");
+    const timerLabel = document.createElement("div");
+    timerLabel.className = "company-timer-label";
+    timerLabel.textContent =
+      tipo === "COMPRA" ? "Tempo p/ virar VENDA" : "Tempo p/ virar COMPRA";
+
+    const timer = document.createElement("div");
+    timer.className = "company-timer";
+    timer.textContent = formatSeconds(company.secondsRemaining);
+
+    timerBox.appendChild(timerLabel);
+    timerBox.appendChild(timer);
+
+    row.appendChild(main);
+    row.appendChild(timerBox);
+
+    return row;
+  }
+
+  // LISTA DE COMPRA
+  if (buyCompanies.length === 0) {
+    const div = document.createElement("div");
+    div.className = "empty-list";
+    div.textContent = "Nenhuma empresa em ponto ideal de compra no momento.";
+    buyListEl.appendChild(div);
+  } else {
+    buyCompanies.forEach((c) => {
+      buyListEl.appendChild(createRow(c, "COMPRA"));
+    });
+  }
+
+  // LISTA DE VENDA
+  if (sellCompanies.length === 0) {
+    const div = document.createElement("div");
+    div.className = "empty-list";
+    div.textContent = "Nenhuma empresa em ponto crítico de venda no momento.";
+    sellListEl.appendChild(div);
+  } else {
+    sellCompanies.forEach((c) => {
+      sellListEl.appendChild(createRow(c, "VENDA"));
+    });
+  }
+}
+
 
     /***********************
      * GRÁFICO E AVALIAÇÃO
