@@ -1,9 +1,8 @@
 /********************************************
- *  SISTEMA DE AVALIAÇÃO — IA HÍBRIDA
- *  app.js COMPLETO E ATUALIZADO
+ *  AVALIADOR DE AÇÕES — IA HÍBRIDA
+ *  app.js COMPLETO (com botões e cálculo de ganhos)
  ********************************************/
 
-/************* SENHA *************/
 const ACCESS_PASSWORD = "2207";
 
 function unlockSite() {
@@ -24,44 +23,9 @@ document.getElementById("lock-input").addEventListener("keydown", (e) => {
 /************* ESTADO GLOBAL *************/
 let buyCompanies = [];
 let sellCompanies = [];
+let totalResultado = 0;
 
-let worldContext = {
-  riskLevel: "Moderado",
-  politicalTension: "Estável",
-  score: 0.5
-};
-
-/************* CONTEXTO GLOBAL SIMULADO *************/
-function updateWorldContext() {
-  const now = new Date();
-  const base = (now.getUTCMinutes() % 10) / 10;
-
-  let risk, tension;
-  if (base < 0.3) {
-    risk = "Baixo";
-    tension = "Estável";
-  } else if (base < 0.7) {
-    risk = "Moderado";
-    tension = "Neutro";
-  } else {
-    risk = "Elevado";
-    tension = "Tenso";
-  }
-
-  worldContext = {
-    riskLevel: risk,
-    politicalTension: tension,
-    score: base
-  };
-
-  document.getElementById("world-text").textContent =
-    `Risco: ${risk} · Cenário político: ${tension}`;
-}
-
-updateWorldContext();
-setInterval(updateWorldContext, 60000);
-
-/************* TIMER *************/
+/************* FUNÇÕES AUXILIARES *************/
 function formatSeconds(sec) {
   const s = Math.max(0, sec);
   const m = Math.floor(s / 60);
@@ -70,10 +34,9 @@ function formatSeconds(sec) {
 }
 
 function baseTimerForSide(side) {
-  const risk = worldContext.score;
   const minBase = side === "COMPRA" ? 30 : 20;
   const maxBase = side === "COMPRA" ? 120 : 90;
-  return minBase + Math.round((1 - risk) * (maxBase - minBase));
+  return minBase + Math.round(Math.random() * (maxBase - minBase));
 }
 
 /************* LISTAS *************/
@@ -120,23 +83,45 @@ function tickTimers() {
   for (let i = buyCompanies.length - 1; i >= 0; i--) {
     const c = buyCompanies[i];
     c.secondsRemaining--;
-    if (c.secondsRemaining <= 0) {
-      moveCompany(c, buyCompanies, sellCompanies);
-    }
+    if (c.secondsRemaining <= 0) moveCompany(c, buyCompanies, sellCompanies);
   }
 
   for (let i = sellCompanies.length - 1; i >= 0; i--) {
     const c = sellCompanies[i];
     c.secondsRemaining--;
-    if (c.secondsRemaining <= 0) {
-      moveCompany(c, sellCompanies, buyCompanies);
-    }
+    if (c.secondsRemaining <= 0) moveCompany(c, sellCompanies, buyCompanies);
   }
 
   renderLists();
 }
 
 setInterval(tickTimers, 1000);
+
+/************* CÁLCULO DE RESULTADO *************/
+function calcularResultado(empresa, tipo) {
+  const ganho = empresa.potencialGanho;
+  const valorBase = 100;
+  let resultado = 0;
+
+  if (tipo === "COMPRA") {
+    resultado = (valorBase * ganho) / 100;
+  } else if (tipo === "VENDA") {
+    resultado = (valorBase * ganho) / 100;
+  }
+
+  totalResultado += resultado;
+  atualizarResultadoUI();
+}
+
+function atualizarResultadoUI() {
+  const el = document.getElementById("resultado-total");
+  el.textContent =
+    "Margem total acumulada: " +
+    (totalResultado >= 0 ? "+" : "") +
+    totalResultado.toFixed(2) +
+    " R$";
+  el.style.color = totalResultado >= 0 ? "#00d68f" : "#ff4b6e";
+}
 
 /************* RENDERIZAÇÃO DAS LISTAS *************/
 function renderLists() {
@@ -183,7 +168,6 @@ function renderLists() {
     main.appendChild(ganho);
 
     const timerBox = document.createElement("div");
-
     const label = document.createElement("div");
     label.className = "company-timer-label";
     label.textContent =
@@ -193,8 +177,29 @@ function renderLists() {
     timer.className = "company-timer";
     timer.textContent = formatSeconds(c.secondsRemaining);
 
+    const botao = document.createElement("button");
+    botao.textContent = tipo === "COMPRA" ? "Comprei" : "Vendi";
+    botao.style.marginTop = "4px";
+    botao.style.fontSize = "11px";
+    botao.style.padding = "4px 6px";
+    botao.style.borderRadius = "6px";
+    botao.style.border = "none";
+    botao.style.cursor = "pointer";
+    botao.style.background =
+      tipo === "COMPRA"
+        ? "linear-gradient(135deg,#00d68f,#00a86b)"
+        : "linear-gradient(135deg,#ff4b6e,#d63a5a)";
+    botao.style.color = "white";
+
+    botao.onclick = () => {
+      calcularResultado(c, tipo);
+      botao.disabled = true;
+      botao.style.opacity = "0.6";
+    };
+
     timerBox.appendChild(label);
     timerBox.appendChild(timer);
+    timerBox.appendChild(botao);
 
     row.appendChild(main);
     row.appendChild(timerBox);
@@ -215,75 +220,6 @@ function renderLists() {
   }
 }
 
-/************* AVALIAÇÃO DO TICKER *************/
-async function avaliarTicker() {
-  const input = document.getElementById("ticker-input").value.trim();
-  if (!input) return alert("Digite um ticker, ex: PETR4");
-
-  let ticker = input.toUpperCase();
-  if (!ticker.includes(".")) ticker += ".SA";
-
-  document.getElementById("chart-subtitle").textContent =
-    "Carregando dados de " + ticker + "…";
-
-  try {
-    const url =
-      "https://query1.finance.yahoo.com/v8/finance/chart/" +
-      encodeURIComponent(ticker) +
-      "?interval=30m&range=5d";
-
-    const resp = await fetch(url);
-    const data = await resp.json();
-
-    const result = data.chart.result[0];
-    const timestamps = result.timestamp;
-    const q = result.indicators.quote[0];
-
-    const closes = q.close;
-    const opens = q.open;
-    const highs = q.high;
-    const lows = q.low;
-
-    const ultimo = closes[closes.length - 1];
-
-    function mm(arr, p) {
-      if (arr.length < p) return null;
-      const slice = arr.slice(-p);
-      return slice.reduce((a, b) => a + b, 0) / p;
-    }
-
-    const mm20 = mm(closes, 20);
-    const mm50 = mm(closes, 50);
-
-    let rec = "MANTER";
-
-    if (ultimo > mm20 && mm20 > mm50) rec = "COMPRA";
-    if (ultimo < mm20 && mm20 < mm50) rec = "VENDA";
-
-    if (worldContext.riskLevel === "Elevado" && rec === "COMPRA") rec = "MANTER";
-    if (worldContext.riskLevel === "Baixo" && rec === "MANTER") rec = "COMPRA";
-
-    const nomeEmpresa = ticker.split(".")[0];
-
-    if (rec === "COMPRA") {
-      addOrUpdateCompany(ticker, "COMPRA", nomeEmpresa, {
-        valorSugerido: ultimo * 0.97,
-        potencialGanho: ((mm20 - ultimo) / ultimo) * 100
-      });
-    } else if (rec === "VENDA") {
-      addOrUpdateCompany(ticker, "VENDA", nomeEmpresa, {
-        valorSugerido: ultimo * 1.03,
-        potencialGanho: ((ultimo - mm20) / ultimo) * 100
-      });
-    }
-
-    renderChart(timestamps, opens, highs, lows, closes, ticker);
-  } catch (e) {
-    console.error(e);
-    alert("Erro ao carregar dados do ticker.");
-  }
-}
-
 /************* GRÁFICO *************/
 function renderChart(t, o, h, l, c, ticker) {
   const trace = {
@@ -298,42 +234,4 @@ function renderChart(t, o, h, l, c, ticker) {
   };
 
   Plotly.newPlot("chart", [trace], {
-    margin: { l: 40, r: 10, t: 10, b: 20 },
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(0,0,0,0)"
-  });
-
-  document.getElementById("chart-subtitle").textContent =
-    "Últimos candles de " + ticker;
-}
-
-/************* EVENTOS *************/
-document.getElementById("btnAvaliar").onclick = avaliarTicker;
-document.getElementById("ticker-input").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") avaliarTicker();
-});
-
-/************* LISTA INICIAL *************/
-buyCompanies = [
-  {
-    ticker: "VALE3.SA",
-    name: "Vale S.A.",
-    side: "COMPRA",
-    secondsRemaining: baseTimerForSide("COMPRA"),
-    valorSugerido: 62.50,
-    potencialGanho: 4.2
-  }
-];
-
-sellCompanies = [
-  {
-    ticker: "IRBR3.SA",
-    name: "IRB Brasil",
-    side: "VENDA",
-    secondsRemaining: baseTimerForSide("VENDA"),
-    valorSugerido: 1.95,
-    potencialGanho: -3.1
-  }
-];
-
-renderLists();
+    margin: { l
