@@ -1,98 +1,202 @@
-body {
-    background: #0d1117;
-    color: #fff;
-    font-family: Arial, sans-serif;
+* {
+    box-sizing: border-box;
     margin: 0;
     padding: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body {
+    background: #010409;
+    color: #c9d1d9;
+    min-height: 100vh;
 }
 
 .container {
     max-width: 900px;
-    margin: 0 auto;
-    padding: 20px;
+    margin: 20px auto;
+    padding: 16px;
 }
 
 .hidden {
     display: none;
 }
 
-.card {
-    background: #161b22;
-    padding: 15px;
-    border-radius: 10px;
-    margin-top: 20px;
-    border: 1px solid #30363d;
+h1 {
+    text-align: center;
+    margin-bottom: 20px;
+    color: #f0f6fc;
 }
 
-input, select, button {
-    margin-top: 10px;
-}
-
-/* Listas de compra/venda */
-.lista-acoes {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-.lista-acoes li {
-    display: flex;
-    justify-content: space-between;
-    padding: 8px 12px;
-    margin-bottom: 6px;
-    background: rgba(255, 255, 255, 0.05);
+input[type="text"], select {
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0 12px 0;
     border-radius: 6px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    font-size: 14px;
+    border: 1px solid #30363d;
+    background: #0d1117;
+    color: #c9d1d9;
 }
 
-.timer-tag {
+button {
+    padding: 10px 16px;
+    border-radius: 6px;
+    border: none;
+    background: #238636;
+    color: #fff;
+    cursor: pointer;
+    margin: 4px 0 12px 0;
+}
+
+button:hover {
+    background: #2ea043;
+}
+
+.card {
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 8px;
+    padding: 12px;
+    margin-top: 12px;
+}
+
+.autocomplete-items {
+    position: absolute;
+    background: #0d1117;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    z-index: 10;
+    width: 100%;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.autocomplete-items div {
+    padding: 8px;
+    cursor: pointer;
+}
+
+.autocomplete-items div:hover {
+    background: #161b22;
+}
+
+.highlight {
     font-weight: bold;
-    color: #00e676;
+    text-align: center;
+    padding: 10px;
 }
 
-/* Cofre básico (ajuste conforme seu CSS atual) */
+.highlight.compra {
+    background: rgba(46, 160, 67, 0.2);
+    border: 1px solid #2ea043;
+}
+
+.highlight.venda {
+    background: rgba(248, 81, 73, 0.2);
+    border: 1px solid #f85149;
+}
+
+/* COFRE */
 #lock-screen {
     position: fixed;
     inset: 0;
-    background: #02040a;
+    background: #000;
     display: flex;
     align-items: center;
     justify-content: center;
+    z-index: 9999;
 }
 
 .lock-panel {
-    background: #161b22;
+    background: #050608;
+    border: 1px solid #444;
+    border-radius: 12px;
     padding: 20px;
-    border-radius: 10px;
-    border: 1px solid #30363d;
+    width: 280px;
     text-align: center;
+    box-shadow: 0 0 20px rgba(0,0,0,0.8);
+}
+
+#lock-display {
+    background: #0d1117;
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 12px;
+    letter-spacing: 6px;
+    font-size: 18px;
+    border: 1px solid #30363d;
 }
 
 .lock-grid {
     display: grid;
-    grid-template-columns: repeat(3, 50px);
-    gap: 10px;
-    justify-content: center;
-    margin: 15px 0;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin-bottom: 10px;
 }
 
-.lock-grid button,
-.enter-btn {
-    background: #238636;
-    border: none;
-    color: #fff;
-    padding: 8px;
+.lock-grid button {
+    background: #111827;
+    border: 1px solid #4b5563;
+    color: #e5e7eb;
+    font-size: 18px;
+    padding: 10px 0;
     border-radius: 6px;
     cursor: pointer;
+    transition: 0.15s;
 }
 
-#lock-display {
-    margin-top: 10px;
-    font-size: 20px;
+.lock-grid button:hover {
+    background: #1f2937;
+}
+
+.enter-btn {
+    width: 100%;
+    padding: 10px;
+    background: #1f2937;
+    border: 1px solid #4b5563;
+    color: #e5e7eb;
+    border-radius: 6px;
+    cursor: not-allowed;
+    opacity: 0.5;
+    margin-top: 8px;
+    transition: 0.2s;
+}
+
+.enter-btn.enabled {
+    background: #238636;
+    border-color: #2ea043;
+    cursor: pointer;
+    opacity: 1;
 }
 
 #lock-error {
-    margin-top: 10px;
-    color: #ff5555;
+    color: #f85149;
+    min-height: 18px;
+    font-size: 13px;
+    margin-top: 4px;
+}
+
+/* PAINEL TENDÊNCIA */
+#painel-tendencia {
+    border-left: 4px solid #30363d;
+}
+
+#painel-tendencia.alta {
+    border-left-color: #2ea043;
+}
+
+#painel-tendencia.baixa {
+    border-left-color: #f85149;
+}
+
+#painel-tendencia.neutro {
+    border-left-color: #8b949e;
+}
+
+pre {
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    font-size: 12px;
+    background: #010409;
+    padding: 8px;
+    border-radius: 6px;
 }
