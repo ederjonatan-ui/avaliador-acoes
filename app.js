@@ -293,7 +293,7 @@ function moverParaListaOposta(ticker) {
 // =========================
 // COFRE
 // =========================
-let senha = "2208";
+let senha = "2207";
 let entrada = "";
 
 function pressKey(num) {
@@ -302,7 +302,7 @@ function pressKey(num) {
         document.getElementById("lock-display").textContent = "•".repeat(entrada.length);
     }
 }
- 
+
 function unlockSite() {
     if (entrada === senha) {
         document.getElementById("lock-screen").style.display = "none";
