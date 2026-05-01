@@ -1,240 +1,34 @@
-/********************************************
- *  AVALIADOR DE AÇÕES — IA HÍBRIDA
- *  app.js COMPLETO (com barra neon e atualização automática)
- ********************************************/
-
-const ACCESS_PASSWORD = "ia-2025";
-
-function unlockSite() {
-  const input = document.getElementById("lock-input").value.trim();
-  if (input === ACCESS_PASSWORD) {
-    document.getElementById("lock-screen").style.display = "none";
-    document.getElementById("app-root").style.display = "block";
-  } else {
-    alert("Senha incorreta.");
-  }
+body {
+    background: #0d1117;
+    color: white;
+    font-family: Arial, sans-serif;
 }
 
-document.getElementById("lock-button").onclick = unlockSite;
-document.getElementById("lock-input").addEventListener("keydown", (e) => {
-  if (e.key === "Enter") unlockSite();
-});
-
-/************* ESTADO GLOBAL *************/
-let buyCompanies = [];
-let sellCompanies = [];
-let totalResultado = 0;
-
-/************* BARRA DE PROGRESSO *************/
-function mostrarBarraAtualizacao() {
-  const barra = document.getElementById("update-bar");
-  barra.style.width = "0%";
-  barra.style.opacity = "1";
-  barra.style.transition = "width 3s linear";
-  barra.style.background = "linear-gradient(90deg,#00aaff,#00d68f)";
-  barra.style.height = "4px";
-  barra.style.position = "fixed";
-  barra.style.top = "0";
-  barra.style.left = "0";
-  barra.style.zIndex = "9999";
-
-  setTimeout(() => {
-    barra.style.width = "100%";
-  }, 50);
-
-  setTimeout(() => {
-    barra.style.opacity = "0";
-  }, 3000);
+.card {
+    background: #161b22;
+    padding: 15px;
+    border-radius: 10px;
+    margin-top: 20px;
+    border: 1px solid #30363d;
 }
 
-/************* FUNÇÕES AUXILIARES *************/
-function formatSeconds(sec) {
-  const s = Math.max(0, sec);
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${String(m).padStart(2, "0")}:${String(r).padStart(2, "0")}`;
+.lista-acoes {
+    list-style: none;
+    padding: 0;
+    margin: 0;
 }
 
-function baseTimerForSide(side) {
-  const minBase = side === "COMPRA" ? 30 : 20;
-  const maxBase = side === "COMPRA" ? 120 : 90;
-  return minBase + Math.round(Math.random() * (maxBase - minBase));
+.lista-acoes li {
+    display: flex;
+    justify-content: space-between;
+    padding: 8px 12px;
+    margin-bottom: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-/************* LISTAS *************/
-function addOrUpdateCompany(ticker, side, name, extra = {}) {
-  const target = side === "COMPRA" ? buyCompanies : sellCompanies;
-  const other = side === "COMPRA" ? sellCompanies : buyCompanies;
-
-  const idxOther = other.findIndex((c) => c.ticker === ticker);
-  if (idxOther >= 0) other.splice(idxOther, 1);
-
-  const idx = target.findIndex((c) => c.ticker === ticker);
-  const newSeconds = baseTimerForSide(side);
-
-  const obj = {
-    ticker,
-    name,
-    side,
-    secondsRemaining: newSeconds,
-    valorSugerido: extra.valorSugerido || 0,
-    potencialGanho: extra.potencialGanho || 0
-  };
-
-  if (idx >= 0) {
-    target[idx] = { ...target[idx], ...obj };
-  } else {
-    target.push(obj);
-  }
-
-  renderLists();
+.timer-tag {
+    font-weight: bold;
+    color: #00e676;
 }
-
-function moveCompany(company, fromList, toList) {
-  const idx = fromList.indexOf(company);
-  if (idx >= 0) fromList.splice(idx, 1);
-
-  const newSide = company.side === "COMPRA" ? "VENDA" : "COMPRA";
-  company.side = newSide;
-  company.secondsRemaining = baseTimerForSide(newSide);
-
-  toList.push(company);
-}
-
-function tickTimers() {
-  for (let i = buyCompanies.length - 1; i >= 0; i--) {
-    const c = buyCompanies[i];
-    c.secondsRemaining--;
-    if (c.secondsRemaining <= 0) moveCompany(c, buyCompanies, sellCompanies);
-  }
-
-  for (let i = sellCompanies.length - 1; i >= 0; i--) {
-    const c = sellCompanies[i];
-    c.secondsRemaining--;
-    if (c.secondsRemaining <= 0) moveCompany(c, sellCompanies, buyCompanies);
-  }
-
-  renderLists();
-}
-
-setInterval(tickTimers, 1000);
-
-/************* CÁLCULO DE RESULTADO *************/
-function calcularResultado(empresa, tipo) {
-  const ganho = empresa.potencialGanho;
-  const valorBase = 100;
-  let resultado = (valorBase * ganho) / 100;
-  totalResultado += resultado;
-  atualizarResultadoUI();
-}
-
-function atualizarResultadoUI() {
-  const el = document.getElementById("resultado-total");
-  el.textContent =
-    "Margem total acumulada: " +
-    (totalResultado >= 0 ? "+" : "") +
-    totalResultado.toFixed(2) +
-    " R$";
-  el.style.color = totalResultado >= 0 ? "#00d68f" : "#ff4b6e";
-}
-
-/************* RENDERIZAÇÃO DAS LISTAS *************/
-function renderLists() {
-  const buyEl = document.getElementById("buy-list");
-  const sellEl = document.getElementById("sell-list");
-
-  buyEl.innerHTML = "";
-  sellEl.innerHTML = "";
-
-  function createRow(c, tipo) {
-    const row = document.createElement("div");
-    row.className = "company-row";
-
-    const main = document.createElement("div");
-    main.className = "company-main";
-
-    const name = document.createElement("div");
-    name.className = "company-name";
-    name.textContent = c.name;
-
-    const ticker = document.createElement("div");
-    ticker.className = "company-ticker";
-    ticker.textContent = c.ticker;
-
-    const valor = document.createElement("div");
-    valor.style.fontSize = "11px";
-    valor.style.color = "#7fffe0";
-    valor.textContent =
-      tipo === "COMPRA"
-        ? `Valor ideal: R$ ${c.valorSugerido.toFixed(2)}`
-        : `Valor alvo: R$ ${c.valorSugerido.toFixed(2)}`;
-
-    const ganho = document.createElement("div");
-    ganho.style.fontSize = "11px";
-    ganho.style.color = c.potencialGanho >= 0 ? "#00d68f" : "#ff4b6e";
-    ganho.textContent =
-      tipo === "COMPRA"
-        ? `Potencial: +${c.potencialGanho.toFixed(2)}%`
-        : `Risco/Retorno: ${c.potencialGanho.toFixed(2)}%`;
-
-    main.appendChild(name);
-    main.appendChild(ticker);
-    main.appendChild(valor);
-    main.appendChild(ganho);
-
-    const timerBox = document.createElement("div");
-    const label = document.createElement("div");
-    label.className = "company-timer-label";
-    label.textContent =
-      tipo === "COMPRA" ? "Tempo p/ virar VENDA" : "Tempo p/ virar COMPRA";
-
-    const timer = document.createElement("div");
-    timer.className = "company-timer";
-    timer.textContent = formatSeconds(c.secondsRemaining);
-
-    const botao = document.createElement("button");
-    botao.textContent = tipo === "COMPRA" ? "Comprei" : "Vendi";
-    botao.className = tipo === "COMPRA" ? "btn-buy" : "btn-sell";
-    botao.onclick = () => {
-      calcularResultado(c, tipo);
-      botao.disabled = true;
-      botao.style.opacity = "0.6";
-    };
-
-    timerBox.appendChild(label);
-    timerBox.appendChild(timer);
-    timerBox.appendChild(botao);
-
-    row.appendChild(main);
-    row.appendChild(timerBox);
-
-    return row;
-  }
-
-  buyCompanies.forEach((c) => buyEl.appendChild(createRow(c, "COMPRA")));
-  sellCompanies.forEach((c) => sellEl.appendChild(createRow(c, "VENDA")));
-}
-
-/************* ATUALIZAÇÃO AUTOMÁTICA *************/
-async function atualizarEmpresasAutomaticamente() {
-  mostrarBarraAtualizacao();
-
-  const todasEmpresas = [...buyCompanies, ...sellCompanies];
-  for (const empresa of todasEmpresas) {
-    try {
-      const url =
-        "https://query1.finance.yahoo.com/v8/finance/chart/" +
-        encodeURIComponent(empresa.ticker) +
-        "?interval=30m&range=1d";
-
-      const resp = await fetch(url);
-      const data = await resp.json();
-
-      const result = data.chart.result[0];
-      const closes = result.indicators.quote[0].close;
-      const ultimo = closes[closes.length - 1];
-
-      if (empresa.side === "COMPRA") {
-        empresa.valorSugerido = ultimo * 0.97;
-        empresa.potencialGanho = ((ultimo * 1.03 - ultimo) / ultimo) * 100;
-      }
