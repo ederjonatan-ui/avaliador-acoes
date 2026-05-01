@@ -1,1017 +1,115 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Avaliador de Ações — IA Híbrida</title>
-
-  <!-- Plotly para o gráfico -->
-  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-
-  <style>
-    :root {
-      --bg-main: #050814;
-      --bg-card: #0b1020;
-      --bg-card-alt: #0f1528;
-      --accent: #1a73e8;
-      --accent-soft: #2b8cff;
-      --accent-sell: #ff4b6e;
-      --accent-buy: #00d68f;
-      --text-main: #f5f7ff;
-      --text-soft: #9bb0ff;
-      --border-soft: #1b2340;
-      --timer: #ffcc00;
-      --danger: #ff4b6e;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #101633 0, #050814 55%);
-      color: var(--text-main);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: stretch;
-    }
-
-    #app-root {
-      width: 100%;
-      max-width: 1200px;
-      padding: 12px;
-    }
-
-    /* TELA DE SENHA */
-    #lock-screen {
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(circle at top, #111633 0, #02030a 55%);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    }
-
-    #lock-card {
-      background: linear-gradient(145deg, #050814, #0c1224);
-      border-radius: 18px;
-      padding: 28px 22px 24px;
-      width: 90%;
-      max-width: 380px;
-      box-shadow: 0 0 40px rgba(0, 0, 0, 0.7);
-      border: 1px solid rgba(60, 90, 200, 0.6);
-      position: relative;
-      overflow: hidden;
-    }
-
-    #lock-card::before {
-      content: "";
-      position: absolute;
-      inset: -40%;
-      background: conic-gradient(
-        from 180deg,
-        rgba(0, 255, 200, 0.2),
-        rgba(0, 140, 255, 0.4),
-        rgba(0, 255, 200, 0.2)
-      );
-      opacity: 0.25;
-      filter: blur(40px);
-      z-index: -1;
-    }
-
-    #lock-title {
-      font-size: 20px;
-      font-weight: 600;
-      margin-bottom: 4px;
-      color: var(--text-main);
-    }
-
-    #lock-subtitle {
-      font-size: 13px;
-      color: var(--text-soft);
-      margin-bottom: 18px;
-    }
-
-    #lock-input {
-      width: 100%;
-      padding: 12px 12px;
-      border-radius: 10px;
-      border: 1px solid var(--border-soft);
-      background: #050814;
-      color: var(--text-main);
-      font-size: 15px;
-      outline: none;
-      margin-bottom: 14px;
-    }
-
-    #lock-input:focus {
-      border-color: var(--accent-soft);
-      box-shadow: 0 0 0 1px rgba(43, 140, 255, 0.4);
-    }
-
-    #lock-button {
-      width: 100%;
-      padding: 11px 12px;
-      border-radius: 10px;
-      border: none;
-      background: linear-gradient(135deg, var(--accent), var(--accent-soft));
-      color: white;
-      font-size: 15px;
-      font-weight: 600;
-      cursor: pointer;
-      margin-bottom: 8px;
-    }
-
-    #lock-button:hover {
-      filter: brightness(1.05);
-    }
-
-    #lock-hint {
-      font-size: 11px;
-      color: #6f7bb5;
-      text-align: center;
-    }
-
-    /* HEADER */
-    header {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      margin-bottom: 14px;
-    }
-
-    #title-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-
-    #app-title {
-      font-size: 20px;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-    }
-
-    #app-badge {
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      border: 1px solid rgba(0, 255, 200, 0.5);
-      color: #7fffe0;
-      background: radial-gradient(circle at top left, rgba(0, 255, 200, 0.15), transparent 60%);
-    }
-
-    #subtitle-row {
-      font-size: 12px;
-      color: var(--text-soft);
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    #world-context {
-      font-size: 11px;
-      color: #7aa2ff;
-      display: flex;
-      gap: 6px;
-      align-items: center;
-    }
-
-    #world-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #00d68f;
-      box-shadow: 0 0 8px rgba(0, 214, 143, 0.9);
-    }
-
-    /* TOPO CONTROLES */
-    #top-controls {
-      display: grid;
-      grid-template-columns: minmax(0, 1.6fr) auto;
-      gap: 8px;
-      margin-bottom: 10px;
-    }
-
-    #ticker-input {
-      width: 100%;
-      padding: 11px 11px;
-      border-radius: 10px;
-      border: 1px solid var(--border-soft);
-      background: rgba(5, 8, 20, 0.9);
-      color: var(--text-main);
-      font-size: 14px;
-      outline: none;
-    }
-
-    #ticker-input::placeholder {
-      color: #4f5a8f;
-    }
-
-    #ticker-input:focus {
-      border-color: var(--accent-soft);
-      box-shadow: 0 0 0 1px rgba(43, 140, 255, 0.4);
-    }
-
-    #btnAvaliar {
-      padding: 0 14px;
-      border-radius: 10px;
-      border: none;
-      background: linear-gradient(135deg, var(--accent), var(--accent-soft));
-      color: white;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-    }
-
-    #btnAvaliar:hover {
-      filter: brightness(1.05);
-    }
-
-    /* GRID PRINCIPAL */
-    #main-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 2.1fr) minmax(0, 1.4fr);
-      gap: 10px;
-    }
-
-    @media (max-width: 900px) {
-      #main-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
-    .card {
-      background: radial-gradient(circle at top left, #151c3a 0, #050814 60%);
-      border-radius: 14px;
-      padding: 10px 10px 12px;
-      border: 1px solid var(--border-soft);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    .card-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--text-soft);
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-    }
-
-    .card-subtitle {
-      font-size: 11px;
-      color: #6f7bb5;
-    }
-
-    /* GRÁFICO */
-    #chart {
-      width: 100%;
-      height: 260px;
-    }
-
-    #day-slider-row {
-      margin-top: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      font-size: 11px;
-      color: var(--text-soft);
-    }
-
-    #diaRange {
-      flex: 1;
-      accent-color: var(--accent-soft);
-    }
-
-    /* TENDÊNCIA */
-    #trend-value {
-      font-size: 16px;
-      font-weight: 600;
-      margin-top: 4px;
-    }
-
-    #trend-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      padding: 3px 8px;
-      border-radius: 999px;
-      background: rgba(0, 214, 143, 0.12);
-      color: #7fffe0;
-      margin-top: 4px;
-    }
-
-    #trend-dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #00d68f;
-      box-shadow: 0 0 8px rgba(0, 214, 143, 0.9);
-    }
-
-    #ganho-simulado {
-      font-size: 11px;
-      color: #9be6ff;
-      margin-top: 4px;
-    }
-
-    /* LISTAS COMPRA / VENDA */
-    #lists-grid {
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-      gap: 8px;
-      margin-top: 4px;
-    }
-
-    @media (max-width: 700px) {
-      #lists-grid {
-        grid-template-columns: minmax(0, 1fr);
-      }
-    }
-
-    .list-card {
-      background: radial-gradient(circle at top left, #151c3a 0, #050814 60%);
-      border-radius: 14px;
-      padding: 10px 10px 8px;
-      border: 1px solid var(--border-soft);
-    }
-
-    .list-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 6px;
-    }
-
-    .list-title {
-      font-size: 12px;
-      font-weight: 600;
-      letter-spacing: 0.03em;
-      text-transform: uppercase;
-    }
-
-    .list-title.buy {
-      color: var(--accent-buy);
-    }
-
-    .list-title.sell {
-      color: var(--accent-sell);
-    }
-
-    .list-subtitle {
-      font-size: 10px;
-      color: #6f7bb5;
-    }
-
-    .company-row {
-      display: grid;
-      grid-template-columns: minmax(0, 1.4fr) auto;
-      gap: 4px;
-      align-items: center;
-      padding: 6px 6px;
-      border-radius: 10px;
-      background: rgba(5, 8, 20, 0.9);
-      margin-bottom: 4px;
-      border: 1px solid rgba(40, 60, 140, 0.7);
-    }
-
-    .company-main {
-      display: flex;
-      flex-direction: column;
-      gap: 1px;
-    }
-
-    .company-name {
-      font-size: 12px;
-      font-weight: 500;
-    }
-
-    .company-ticker {
-      font-size: 10px;
-      color: #7aa2ff;
-    }
-
-    .company-timer {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--timer);
-      text-align: right;
-    }
-
-    .company-timer-label {
-      font-size: 9px;
-      color: #6f7bb5;
-      text-align: right;
-    }
-
-    .empty-list {
-      font-size: 11px;
-      color: #5f6a9b;
-      padding: 4px 2px 2px;
-    }
-
-    /* RODAPÉ PEQUENO */
-    #footer-note {
-      margin-top: 10px;
-      font-size: 10px;
-      color: #4f5a8f;
-      text-align: right;
-    }
-  </style>
-</head>
-<body>
-  <!-- TELA DE SENHA -->
-  <div id="lock-screen">
-    <div id="lock-card">
-      <div id="lock-title">Avaliador de Ações</div>
-      <div id="lock-subtitle">Acesso restrito — IA Híbrida com parâmetros financeiros e políticos globais.</div>
-      <input
-        id="lock-input"
-        type="password"
-        placeholder="Digite a senha de acesso"
-        autocomplete="off"
-      />
-      <button id="lock-button">Entrar</button>
-      <div id="lock-hint">Dica: altere a senha diretamente no código antes de publicar.</div>
-    </div>
-  </div>
-
-  <!-- APP -->
-  <div id="app-root" style="display:none;">
-    <header>
-      <div id="title-row">
-        <div id="app-title">Avaliador de Ações — IA Híbrida</div>
-        <div id="app-badge">Análise em tempo real</div>
-      </div>
-      <div id="subtitle-row">
-        <div>Combinação de indicadores técnicos, notícias e contexto macroeconômico global.</div>
-        <div id="world-context">
-          <span id="world-dot"></span>
-          <span id="world-text">Contexto global: carregando…</span>
-        </div>
-      </div>
-    </header>
-
-    <div id="top-controls">
-      <input
-        id="ticker-input"
-        placeholder="Ex.: PETR4.SA, VALE3.SA, ITUB4.SA"
-      />
-      <button id="btnAvaliar">Avaliar</button>
-    </div>
-
-    <div id="main-grid">
-      <!-- LADO ESQUERDO: GRÁFICO + TENDÊNCIA -->
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">Gráfico de Preço</div>
-            <div class="card-subtitle" id="chart-subtitle">Selecione um ticker para iniciar.</div>
-          </div>
-        </div>
-        <div id="chart"></div>
-        <div id="day-slider-row">
-          <span>Escolher dia (simulação):</span>
-          <input id="diaRange" type="range" min="1" max="5" value="1" />
-          <span id="diaLabel">1D</span>
-        </div>
-      </div>
-
-      <!-- LADO DIREITO: TENDÊNCIA + LISTAS -->
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">Tendência em Tempo Real</div>
-            <div class="card-subtitle">Baseada em médias móveis, volatilidade e risco político global.</div>
-          </div>
-        </div>
-        <div id="trend-value">Aguardando avaliação…</div>
-        <div id="trend-badge" style="display:none;">
-          <span id="trend-dot"></span>
-          <span id="trend-label"></span>
-        </div>
-        <div id="ganho-simulado">Ganho simulado: —</div>
-
-        <div id="lists-grid">
-          <div class="list-card">
-            <div class="list-header">
-              <div class="list-title buy">Empresas que Compensa Comprar</div>
-            </div>
-            <div class="list-subtitle">Entradas sugeridas pela IA, com tempo ideal de compra.</div>
-            <div id="buy-list"></div>
-          </div>
-
-          <div class="list-card">
-            <div class="list-header">
-              <div class="list-title sell">Empresas que Compensa Vender</div>
-            </div>
-            <div class="list-subtitle">Saídas estratégicas antes da perda de vantagem.</div>
-            <div id="sell-list"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div id="footer-note">
-      As recomendações são simulações educacionais e não constituem aconselhamento financeiro.
-    </div>
-  </div>
-
-  <script>
-    /***********************
-     * CONFIGURAÇÃO DE SENHA
-     ***********************/
-    const ACCESS_PASSWORD = "ia-2025"; // altere aqui a senha de acesso
-
-    const lockScreen = document.getElementById("lock-screen");
-    const lockInput = document.getElementById("lock-input");
-    const lockButton = document.getElementById("lock-button");
-    const appRoot = document.getElementById("app-root");
-
-    function unlockIfValid() {
-      const value = lockInput.value.trim();
-      if (value === ACCESS_PASSWORD) {
-        lockScreen.style.display = "none";
-        appRoot.style.display = "block";
-      } else {
-        alert("Senha incorreta.");
-      }
-    }
-
-    lockButton.addEventListener("click", unlockIfValid);
-    lockInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") unlockIfValid();
-    });
-
-    /***********************
-     * ESTADO GLOBAL
-     ***********************/
-    let currentTicker = null;
-    let currentRecommendation = null;
-    let currentGainSimulated = null;
-
-    let worldContext = {
-      riskLevel: "Moderado",
-      politicalTension: "Estável",
-      score: 0.5
-    };
-
-    const buyCompanies = [];
-    const sellCompanies = [];
-
-    /***********************
-     * CONTEXTO GLOBAL (SIMULADO)
-     * Aqui simulamos um “score” que mistura fatores financeiros e políticos.
-     ***********************/
-    function updateWorldContext() {
-      // Simulação simples: varia levemente ao longo do tempo
-      const now = new Date();
-      const minute = now.getUTCMinutes();
-      const base = (minute % 10) / 10; // 0.0 a 0.9
-
-      let riskLevel, politicalTension;
-      if (base < 0.3) {
-        riskLevel = "Baixo";
-        politicalTension = "Estável";
-      } else if (base < 0.7) {
-        riskLevel = "Moderado";
-        politicalTension = "Neutro";
-      } else {
-        riskLevel = "Elevado";
-        politicalTension = "Tenso";
-      }
-
-      worldContext = {
-        riskLevel,
-        politicalTension,
-        score: base
-      };
-
-      const worldText = document.getElementById("world-text");
-      worldText.textContent =
-        "Risco: " +
-        riskLevel +
-        " · Cenário político: " +
-        politicalTension;
-    }
-
-    updateWorldContext();
-    setInterval(updateWorldContext, 60 * 1000);
-
-    /***********************
-     * FUNÇÕES DE LISTA E TIMER
-     ***********************/
-    function formatSeconds(sec) {
-      const s = Math.max(0, sec);
-      const m = Math.floor(s / 60);
-      const r = s % 60;
-      const mm = m.toString().padStart(2, "0");
-      const ss = r.toString().padStart(2, "0");
-      return mm + ":" + ss;
-    }
-
-    function baseTimerForSide(side) {
-      // Ajusta o tempo base conforme o risco global e o lado (compra/venda)
-      const risk = worldContext.score; // 0 a 0.9
-      const minBase = side === "COMPRA" ? 30 : 20;
-      const maxBase = side === "COMPRA" ? 120 : 90;
-      const base = minBase + Math.round((1 - risk) * (maxBase - minBase));
-      return base;
-    }
-
-    function addOrUpdateCompany(ticker, side, nameHint) {
-      const name = nameHint || "Empresa " + ticker.toUpperCase();
-      const targetList = side === "COMPRA" ? buyCompanies : sellCompanies;
-      const otherList = side === "COMPRA" ? sellCompanies : buyCompanies;
-
-      // Remove de lista oposta se existir
-      const idxOther = otherList.findIndex((c) => c.ticker === ticker);
-      if (idxOther >= 0) {
-        otherList.splice(idxOther, 1);
-      }
-
-      const existingIndex = targetList.findIndex((c) => c.ticker === ticker);
-      const newSeconds = baseTimerForSide(side);
-
-      if (existingIndex >= 0) {
-        targetList[existingIndex].secondsRemaining = newSeconds;
-        targetList[existingIndex].name = name;
-      } else {
-        targetList.push({
-          ticker,
-          name,
-          side,
-          secondsRemaining: newSeconds
-        });
-      }
-
-      renderLists();
-    }
-
-    function moveCompanyBetweenLists(company, fromList, toList) {
-      const idx = fromList.indexOf(company);
-      if (idx >= 0) {
-        fromList.splice(idx, 1);
-      }
-      const newSide = company.side === "COMPRA" ? "VENDA" : "COMPRA";
-      company.side = newSide;
-      company.secondsRemaining = baseTimerForSide(newSide);
-      toList.push(company);
-    }
-
-    function tickTimers() {
-      // COMPRA
-      for (let i = buyCompanies.length - 1; i >= 0; i--) {
-        const c = buyCompanies[i];
-        c.secondsRemaining -= 1;
-        if (c.secondsRemaining <= 0) {
-          moveCompanyBetweenLists(c, buyCompanies, sellCompanies);
-        }
-      }
-      // VENDA
-      for (let i = sellCompanies.length - 1; i >= 0; i--) {
-        const c = sellCompanies[i];
-        c.secondsRemaining -= 1;
-        if (c.secondsRemaining <= 0) {
-          moveCompanyBetweenLists(c, sellCompanies, buyCompanies);
-        }
-      }
-      renderLists();
-    }
-
-    setInterval(tickTimers, 1000);
-
-    function renderLists() {
-      const buyListEl = document.getElementById("buy-list");
-      const sellListEl = document.getElementById("sell-list");
-
-      buyListEl.innerHTML = "";
-      sellListEl.innerHTML = "";
-
-      if (buyCompanies.length === 0) {
-        const div = document.createElement("div");
-        div.className = "empty-list";
-        div.textContent = "Nenhuma empresa em ponto ideal de compra no momento.";
-        buyListEl.appendChild(div);
-      } else {
-        buyCompanies.forEach((c) => {
-          const row = document.createElement("div");
-          row.className = "company-row";
-
-          const main = document.createElement("div");
-          main.className = "company-main";
-
-          const name = document.createElement("div");
-          name.className = "company-name";
-          name.textContent = c.name;
-
-          const ticker = document.createElement("div");
-          ticker.className = "company-ticker";
-          ticker.textContent = c.ticker.toUpperCase();
-
-          main.appendChild(name);
-          main.appendChild(ticker);
-
-          const timerBox = document.createElement("div");
-          const timerLabel = document.createElement("div");
-          timerLabel.className = "company-timer-label";
-          timerLabel.textContent = "Tempo p/ mudar p/ venda";
-
-          const timer = document.createElement("div");
-          timer.className = "company-timer";
-          timer.textContent = formatSeconds(c.secondsRemaining);
-
-          timerBox.appendChild(timerLabel);
-          timerBox.appendChild(timer);
-
-          row.appendChild(main);
-          row.appendChild(timerBox);
-
-          buyListEl.appendChild(row);
-        });
-      }
-
-      if (sellCompanies.length === 0) {
-        const div = document.createElement("div");
-        div.className = "empty-list";
-        div.textContent = "Nenhuma empresa em ponto crítico de venda no momento.";
-        sellListEl.appendChild(div);
-      } else {
-        sellCompanies.forEach((c) => {
-          const row = document.createElement("div");
-          row.className = "company-row";
-
-          const main = document.createElement("div");
-          main.className = "company-main";
-
-          const name = document.createElement("div");
-          name.className = "company-name";
-          name.textContent = c.name;
-
-          const ticker = document.createElement("div");
-          ticker.className = "company-ticker";
-          ticker.textContent = c.ticker.toUpperCase();
-
-          main.appendChild(name);
-          main.appendChild(ticker);
-
-          const timerBox = document.createElement("div");
-          const timerLabel = document.createElement("div");
-          timerLabel.className = "company-timer-label";
-          timerLabel.textContent = "Tempo p/ mudar p/ compra";
-
-          const timer = document.createElement("div");
-          timer.className = "company-timer";
-          timer.textContent = formatSeconds(c.secondsRemaining);
-
-          timerBox.appendChild(timerLabel);
-          timerBox.appendChild(timer);
-
-          row.appendChild(main);
-          row.appendChild(timerBox);
-
-          sellListEl.appendChild(row);
-        });
-      }
-    }
-
-    /***********************
-     * GRÁFICO E AVALIAÇÃO
-     ***********************/
-    const tickerInput = document.getElementById("ticker-input");
-    const btnAvaliar = document.getElementById("btnAvaliar");
-    const chartSubtitle = document.getElementById("chart-subtitle");
-    const trendValue = document.getElementById("trend-value");
-    const trendBadge = document.getElementById("trend-badge");
-    const trendLabel = document.getElementById("trend-label");
-    const ganhoSimuladoEl = document.getElementById("ganho-simulado");
-
-    async function avaliarTicker() {
-      const raw = tickerInput.value.trim();
-      if (!raw) {
-        alert("Digite um ticker, por exemplo PETR4.SA");
-        return;
-      }
-
-      let ticker = raw.toUpperCase();
-      if (!ticker.includes(".")) {
-        ticker = ticker + ".SA";
-      }
-
-      currentTicker = ticker;
-      chartSubtitle.textContent = "Carregando dados de " + ticker + "…";
-      trendValue.textContent = "Calculando tendência…";
-      trendBadge.style.display = "none";
-      ganhoSimuladoEl.textContent = "Ganho simulado: —";
-
-      try {
-        const url =
-          "https://query1.finance.yahoo.com/v8/finance/chart/" +
-          encodeURIComponent(ticker) +
-          "?interval=30m&range=5d";
-
-        const resp = await fetch(url);
-        const data = await resp.json();
-
-        if (!data.chart || !data.chart.result || !data.chart.result[0]) {
-          throw new Error("Sem dados para o ticker.");
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avaliador de Ações</title>
+
+    <!-- Chart.js + Financial Chart -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: #fff;
         }
 
-        const result = data.chart.result[0];
-        const timestamps = result.timestamp || [];
-        const quote = result.indicators.quote[0];
-        const closes = quote.close || [];
-        const highs = quote.high || [];
-        const lows = quote.low || [];
-        const opens = quote.open || [];
-
-        if (closes.length < 10) {
-          throw new Error("Poucos dados para análise.");
+        .container {
+            max-width: 900px;
+            margin: auto;
+            padding: 20px;
         }
 
-        // Plot simples de candles
-        const trace = {
-          x: timestamps.map((t) => new Date(t * 1000)),
-          open: opens,
-          high: highs,
-          low: lows,
-          close: closes,
-          type: "candlestick",
-          increasing: { line: { color: "#00d68f" } },
-          decreasing: { line: { color: "#ff4b6e" } }
-        };
-
-        const layout = {
-          margin: { l: 40, r: 10, t: 10, b: 20 },
-          paper_bgcolor: "rgba(0,0,0,0)",
-          plot_bgcolor: "rgba(0,0,0,0)",
-          xaxis: {
-            showgrid: false,
-            color: "#9bb0ff"
-          },
-          yaxis: {
-            showgrid: true,
-            gridcolor: "#1b2340",
-            color: "#9bb0ff"
-          }
-        };
-
-        Plotly.newPlot("chart", [trace], layout, {
-          displayModeBar: false,
-          responsive: true
-        });
-
-        chartSubtitle.textContent = "Últimos dias de negociação para " + ticker;
-
-        // Cálculo de médias móveis simples
-        function mediaMovel(arr, period) {
-          if (arr.length < period) return null;
-          const slice = arr.slice(-period);
-          const sum = slice.reduce((a, b) => a + (b || 0), 0);
-          return sum / slice.length;
+        h1 {
+            text-align: center;
+            margin-bottom: 15px;
         }
 
-        const mm20 = mediaMovel(closes, 20);
-        const mm50 = mediaMovel(closes, 50);
-        const ultimo = closes[closes.length - 1];
-
-        let rec = "MANTER";
-        let textoTendencia = "Neutra no momento";
-        let corDot = "#7aa2ff";
-
-        if (mm20 && mm50) {
-          if (ultimo > mm20 && mm20 > mm50) {
-            rec = "COMPRA";
-            textoTendencia = "Alta no momento";
-            corDot = "#00d68f";
-          } else if (ultimo < mm20 && mm20 < mm50) {
-            rec = "VENDA";
-            textoTendencia = "Queda no momento";
-            corDot = "#ff4b6e";
-          }
+        input, select, button {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 6px;
+            border: none;
+            font-size: 16px;
         }
 
-        // Ajuste pela “temperatura” global (financeiro + político)
-        if (worldContext.riskLevel === "Elevado" && rec === "COMPRA") {
-          // Em risco elevado, suaviza compra para manter
-          rec = "MANTER";
-          textoTendencia = "Cautela — risco global elevado";
-          corDot = "#ffcc00";
-        } else if (worldContext.riskLevel === "Baixo" && rec === "MANTER") {
-          // Em risco baixo, leve viés pró-compra
-          rec = "COMPRA";
-          textoTendencia = "Leve viés de alta";
-          corDot = "#00d68f";
+        button {
+            background: #0a84ff;
+            color: white;
+            cursor: pointer;
         }
 
-        currentRecommendation = rec;
-
-        trendValue.textContent = textoTendencia;
-        trendBadge.style.display = "inline-flex";
-        trendLabel.textContent = "Recomendação: " + rec;
-        document.getElementById("trend-dot").style.background = corDot;
-
-        // Ganho simulado simples
-        const refIndex = Math.max(0, closes.length - 10);
-        const precoRef = closes[refIndex];
-        const ganho = ((ultimo - precoRef) / precoRef) * 100;
-        currentGainSimulated = ganho;
-        ganhoSimuladoEl.textContent =
-          "Ganho simulado (últimos candles): " + ganho.toFixed(2) + "%";
-
-        // Atualiza listas
-        const nomeEmpresa = ticker.split(".")[0];
-        if (rec === "COMPRA") {
-          addOrUpdateCompany(ticker, "COMPRA", nomeEmpresa);
-        } else if (rec === "VENDA") {
-          addOrUpdateCompany(ticker, "VENDA", nomeEmpresa);
-        } else {
-          // MANTER: não força entrada em nenhuma lista, mas se já existir, mantém timer
-          addOrUpdateCompany(ticker, "COMPRA", nomeEmpresa); // opcional: tratar manter como compra leve
+        button:hover {
+            background: #006edc;
         }
-      } catch (e) {
-        console.error(e);
-        chartSubtitle.textContent = "Erro ao carregar dados para " + ticker;
-        trendValue.textContent = "Não foi possível avaliar o ticker.";
-        trendBadge.style.display = "none";
-        ganhoSimuladoEl.textContent = "Ganho simulado: —";
-      }
-    }
 
-    btnAvaliar.addEventListener("click", avaliarTicker);
-    tickerInput.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") avaliarTicker();
-    });
+        #autocomplete-list {
+            background: #222;
+            border: 1px solid #444;
+            margin-top: 5px;
+            border-radius: 6px;
+            max-height: 150px;
+            overflow-y: auto;
+        }
 
-    /***********************
-     * SLIDER DE DIA (APENAS VISUAL)
-     ***********************/
-    const diaRange = document.getElementById("diaRange");
-    const diaLabel = document.getElementById("diaLabel");
+        .autocomplete-item {
+            padding: 10px;
+            cursor: pointer;
+        }
 
-    diaRange.addEventListener("input", () => {
-      const v = parseInt(diaRange.value, 10);
-      const labels = { 1: "1D", 2: "2D", 3: "3D", 4: "4D", 5: "5D" };
-      diaLabel.textContent = labels[v] || v + "D";
-    });
+        .autocomplete-item:hover {
+            background: #333;
+        }
 
-    /***********************
-     * ESTADO INICIAL DAS LISTAS (EXEMPLOS)
-     ***********************/
-    // Exemplos iniciais para não deixar a tela vazia
-    buyCompanies.push(
-      {
-        ticker: "VALE3.SA",
-        name: "Vale S.A.",
-        side: "COMPRA",
-        secondsRemaining: baseTimerForSide("COMPRA")
-      },
-      {
-        ticker: "ITUB4.SA",
-        name: "Itaú Unibanco",
-        side: "COMPRA",
-        secondsRemaining: baseTimerForSide("COMPRA")
-      },
-      {
-        ticker: "PETR4.SA",
-        name: "Petrobras",
-        side: "COMPRA",
-        secondsRemaining: baseTimerForSide("COMPRA")
-      }
-    );
+        .card {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+        }
 
-    sellCompanies.push(
-      {
-        ticker: "OIBR3.SA",
-        name: "OI S.A.",
-        side: "VENDA",
-        secondsRemaining: baseTimerForSide("VENDA")
-      },
-      {
-        ticker: "IRBR3.SA",
-        name: "IRB Brasil",
-        side: "VENDA",
-        secondsRemaining: baseTimerForSide("VENDA")
-      }
-    );
+        .listas {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
 
-    renderLists();
-  </script>
-</body>
-</html>
+        .lista {
+            flex: 1;
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .lista ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .lista li {
+            padding: 10px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .timer-tag {
+            background: #0a84ff;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        /* Tela de bloqueio */
+        #lock-screen {
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content
