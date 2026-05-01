@@ -293,7 +293,7 @@ function moverParaListaOposta(ticker) {
 // =========================
 // COFRE
 // =========================
-let senha = "2207";
+let senha = "2208";
 let entrada = "";
 
 function pressKey(num) {
