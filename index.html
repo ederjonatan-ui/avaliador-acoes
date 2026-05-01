@@ -3,113 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Avaliador de Ações</title>
+    <title>Avaliador de Ações – IA Híbrida</title>
 
-    <!-- Chart.js + Financial Chart -->
+    <!-- Chart.js + Adapter + Candlestick + Zoom -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #111;
-            color: #fff;
-        }
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
 
-        .container {
-            max-width: 900px;
-            margin: auto;
-            padding: 20px;
-        }
+    <!-- TELA DE COFRE -->
+    <div id="lock-screen">
+        <div class="lock-panel">
+            <h2>Acesso Restrito</h2>
+            <p>Digite a sequência correta</p>
 
-        h1 {
-            text-align: center;
-            margin-bottom: 15px;
-        }
+            <div id="lock-display">••••</div>
 
-        input, select, button {
-            width: 100%;
-            padding: 12px;
-            margin-top: 10px;
-            border-radius: 6px;
-            border: none;
-            font-size: 16px;
-        }
+            <div class="lock-grid">
+                <button onclick="pressKey(2)">2</button>
+                <button onclick="pressKey(1)">1</button>
+                <button onclick="pressKey(0)">0</button>
 
-        button {
-            background: #0a84ff;
-            color: white;
-            cursor: pointer;
-        }
+                <button onclick="pressKey(3)">3</button>
+                <button onclick="pressKey(7)">7</button>
+                <button onclick="pressKey(4)">4</button>
 
-        button:hover {
-            background: #006edc;
-        }
+                <button onclick="pressKey(9)">9</button>
+                <button onclick="pressKey(8)">8</button>
+                <button onclick="pressKey(5)">5</button>
+            </div>
 
-        #autocomplete-list {
-            background: #222;
-            border: 1px solid #444;
-            margin-top: 5px;
-            border-radius: 6px;
-            max-height: 150px;
-            overflow-y: auto;
-        }
+            <button id="enter-btn" class="enter-btn" onclick="unlockSite()">ENTRAR</button>
 
-        .autocomplete-item {
-            padding: 10px;
-            cursor: pointer;
-        }
+            <div id="lock-error"></div>
+        </div>
+    </div>
 
-        .autocomplete-item:hover {
-            background: #333;
-        }
+    <!-- CONTEÚDO PRINCIPAL -->
+    <div class="container hidden" id="main-app">
 
-        .card {
-            background: #1a1a1a;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-        }
+        <h1>Avaliador de Ações – IA Híbrida</h1>
 
-        .listas {
-            display: flex;
-            gap: 20px;
-            margin-top: 20px;
-        }
+        <div style="position: relative;">
+            <input id="ativo" type="text" placeholder="Digite o ativo...">
+            <div id="autocomplete-list" class="autocomplete-items"></div>
+        </div>
 
-        .lista {
-            flex: 1;
-            background: #1a1a1a;
-            padding: 15px;
-            border-radius: 8px;
-        }
+        <select id="intervalo" onchange="avaliar()">
+            <option value="1d">Diário</option>
+            <option value="1h">1 hora</option>
+            <option value="15m">15 minutos</option>
+            <option value="1wk">Semanal</option>
+            <option value="1mo">Mensal</option>
+        </select>
 
-        .lista ul {
-            list-style: none;
-            padding: 0;
-        }
+        <button onclick="avaliar()">Avaliar Ativo</button>
 
-        .lista li {
-            padding: 10px;
-            border-bottom: 1px solid #333;
-            display: flex;
-            justify-content: space-between;
-        }
+        <div class="card">
+            <h3>Gráfico de Preço</h3>
+            <canvas id="grafico" height="260"></canvas>
+        </div>
 
-        .timer-tag {
-            background: #0a84ff;
-            padding: 4px 8px;
-            border-radius: 6px;
-            font-size: 12px;
-        }
+        <div class="card">
+            <h3>RSI</h3>
+            <canvas id="graficoRSI" height="120"></canvas>
+        </div>
 
-        /* Tela de bloqueio */
-        #lock-screen {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: #000;
-            display: flex;
-            flex-direction: column;
-            justify-content
+        <div class="card">
+            <h3>MACD</h3>
+            <canvas id="graficoMACD" height="120"></canvas>
+        </div>
+
+        <div class="card">
+            <label>Escolher dia:</label>
+            <input type="range" id="sliderDia" min="0" max="0" value="0" oninput="mudarDia()">
+        </div>
+
+        <div class="card" id="painel-tendencia">
+            <h3>Tendência em Tempo Real</h3>
+            <p id="tendencia-texto">Aguardando análise...</p>
+        </div>
+
+        <div id="resultado"></div>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
