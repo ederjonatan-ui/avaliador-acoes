@@ -1,112 +1,97 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Avaliador de Ações — IA Híbrida</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Avaliador de Ações – IA Híbrida</title>
 
-<link rel="stylesheet" href="style.css" />
+    <!-- Chart.js + Adapter + Candlestick + Zoom -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-financial"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
 
-<!-- Plotly -->
-<script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-
-<style>
-body {
-  background: #0b1221;
-  color: white;
-  font-family: Arial, sans-serif;
-  margin: 0;
-  padding: 0;
-}
-
-#update-bar {
-  width: 0%;
-  height: 4px;
-  background: linear-gradient(90deg,#00aaff,#00d68f);
-  position: fixed;
-  top: 0;
-  left: 0;
-  opacity: 0;
-  transition: width 3s linear, opacity 0.5s ease;
-  z-index: 9999;
-}
-
-.container {
-  padding: 20px;
-}
-
-.section {
-  margin-top: 20px;
-}
-
-#buy-list, #sell-list {
-  max-height: 260px;
-  overflow-y: auto;
-  padding-right: 10px;
-}
-
-.company-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 10px;
-  background: #111a2e;
-  margin-bottom: 8px;
-  border-radius: 8px;
-}
-
-.btn-buy {
-  background: linear-gradient(135deg,#00d68f,#00a86b);
-  color: white;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-sell {
-  background: linear-gradient(135deg,#ff4b6e,#d63a5a);
-  color: white;
-  border: none;
-  padding: 6px 10px;
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-#resultado-total {
-  margin-top: 20px;
-  font-size: 20px;
-  text-align: center;
-}
-</style>
+    <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
 
-<div id="update-bar"></div>
+    <!-- TELA DE COFRE -->
+    <div id="lock-screen">
+        <div class="lock-panel">
+            <h2>Acesso Restrito</h2>
+            <p>Digite a sequência correta</p>
 
-<div class="container">
+            <div id="lock-display">••••</div>
 
-<h1>Avaliador de Ações — IA Híbrida</h1>
+            <div class="lock-grid">
+                <button onclick="pressKey(2)">2</button>
+                <button onclick="pressKey(1)">1</button>
+                <button onclick="pressKey(0)">0</button>
 
-<div>
-  <input id="ticker-input" placeholder="Digite o ticker (ex: PETR4)" />
-  <button id="btnAvaliar">Avaliar</button>
-</div>
+                <button onclick="pressKey(3)">3</button>
+                <button onclick="pressKey(7)">7</button>
+                <button onclick="pressKey(4)">4</button>
 
-<h2>Gráfico</h2>
-<div id="chart" style="height: 350px;"></div>
-<div id="chart-subtitle"></div>
+                <button onclick="pressKey(9)">9</button>
+                <button onclick="pressKey(8)">8</button>
+                <button onclick="pressKey(5)">5</button>
+            </div>
 
-<h2>Empresas que Compensa Comprar</h2>
-<div id="buy-list"></div>
+            <button id="enter-btn" class="enter-btn" onclick="unlockSite()">ENTRAR</button>
 
-<h2>Empresas que Compensa Vender</h2>
-<div id="sell-list"></div>
+            <div id="lock-error"></div>
+        </div>
+    </div>
 
-<div id="resultado-total">Margem total acumulada: 0 R$</div>
+    <!-- CONTEÚDO PRINCIPAL -->
+    <div class="container hidden" id="main-app">
 
-</div>
+        <h1>Avaliador de Ações – IA Híbrida</h1>
 
-<script src="app.js"></script>
+        <div style="position: relative;">
+            <input id="ativo" type="text" placeholder="Digite o ativo...">
+            <div id="autocomplete-list" class="autocomplete-items"></div>
+        </div>
+
+        <select id="intervalo" onchange="avaliar()">
+            <option value="1d">Diário</option>
+            <option value="1h">1 hora</option>
+            <option value="15m">15 minutos</option>
+            <option value="1wk">Semanal</option>
+            <option value="1mo">Mensal</option>
+        </select>
+
+        <button onclick="avaliar()">Avaliar Ativo</button>
+
+        <div class="card">
+            <h3>Gráfico de Preço</h3>
+            <canvas id="grafico" height="260"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>RSI</h3>
+            <canvas id="graficoRSI" height="120"></canvas>
+        </div>
+
+        <div class="card">
+            <h3>MACD</h3>
+            <canvas id="graficoMACD" height="120"></canvas>
+        </div>
+
+        <div class="card">
+            <label>Escolher dia:</label>
+            <input type="range" id="sliderDia" min="0" max="0" value="0" oninput="mudarDia()">
+        </div>
+
+        <div class="card" id="painel-tendencia">
+            <h3>Tendência em Tempo Real</h3>
+            <p id="tendencia-texto">Aguardando análise...</p>
+        </div>
+
+        <div id="resultado"></div>
+
+    </div>
+
+    <script src="app.js"></script>
 </body>
 </html>
