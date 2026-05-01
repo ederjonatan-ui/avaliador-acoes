@@ -284,7 +284,7 @@ function moverParaListaOposta(ticker) {
 // =========================
 // COFRE
 // =========================
-let senha = "210374985"; // ajuste se quiser
+let senha = "2207"; // ajuste se quiser
 let entrada = "";
 
 function pressKey(num) {
